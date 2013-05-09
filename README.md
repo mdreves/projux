@@ -60,7 +60,7 @@ If using DEFAULT_PROJECT_HOST and DEFAULT_PROJECT_SYNC_LIST settings:
 
 A basic workflow might be as follows:
 
-1. Setup project's enviroment variables and aliases:
+* Setup project's enviroment variables and aliases:
 
         $ vi ~/.projects
 
@@ -78,7 +78,7 @@ NOTE: All environment vars and aliases from the project matching `PROJECT_NAME`
 up to the next `PROJECT_NAME` entry will be loaded whenever the
 `project <project_name>` command is used.
 
-2. Setup project sync list and synchronize local/remote hosts
+* Setup project sync list and synchronize local/remote hosts
 
         $ vi ~/.projectsync
 
@@ -87,16 +87,16 @@ up to the next `PROJECT_NAME` entry will be loaded whenever the
 
         $ project sync overthere
 
-3. Attach to remote project
+* Attach to remote project
 
         $ project attach foo
 
 NOTE: By default this will attach to the first TMUX window listed in
 `DEFAULT_PROJECT_WINDOWS` with a TMUX session named after the project.
 
-4. Hack in vim, etc
+* Hack in vim, etc
 
-5. Open a second terminal session to project
+* Open a second terminal session to project
 
         $ project attach foo 2
 
@@ -104,7 +104,7 @@ NOTE: By default this will attach to the second TMUX window listed in
 `DEFAULT_PROJECT_WINDOWS` with a TMUX session named after the project
 but with `_2` append (e.g. `foo_2`).
 
-6. In second terminal window `build`, `test`, ...
+* In second terminal window `build`, `test`, ...
 
         $ format
         $ lint
@@ -112,35 +112,35 @@ but with `_2` append (e.g. `foo_2`).
         $ test
         ...
 
-7. Switch first terminal session to another project
+* Switch first terminal session to another project
 
         $ project bar
 
-8. Hack in vim in new project
+* Hack in vim in new project
 
-9. Switch to second terminal session of new project
+* Switch to second terminal session of new project
 
         $ project bar 2
         $ build
 
-10. Temporarily update tests to a specific test
+* Temporarily update tests to a specific test
 
         $ settest bar_test
         $ test
 
-11. Reload original project settings
+* Reload original project settings
 
         $ project bar 2
 
-12. Switch first terminal back to first project...
+* Switch first terminal back to first project...
 
         $ project foo
 
-13. Detach from terminal 1
+* Detach from terminal 1
 
         $ project detach
 
-14. Reattach right where we left off...
+* Reattach right where we left off...
 
         $ project attach foo
 
