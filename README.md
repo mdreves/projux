@@ -18,13 +18,13 @@ Installation is straight forward:
 
 1. Clone the repository to a local machine (e.g. Mac laptop, etc):
 
-    mkdir <install_dir>
-    git clone git://github.com/mdreves/projux.git <install_dir>
+    mkdir .projux
+    git clone git://github.com/mdreves/projux.git .projux
 
 2. Source the projux `.projectrc` script from `~/.bashrc`
 
-    if [ -f <install_dir>/.projectrc ]; then
-      . <install_dir>/.projectrc
+    if [ -f .projux/.projectrc ]; then
+      . .projux/.projectrc
     fi
 
 3. Add projects to `~/.projects`
@@ -48,11 +48,11 @@ between a Mac laptop and a linux desktop server, then you can add `.bashrc` and
 `.projectrc` and setup the remote `.bashrc` to source it.  Lastely, synchronize
 the local and remote hosts:
 
-    If separate PROJECT_HOST and PROJECT_SYNC_LIST settings:
+If separate PROJECT_HOST and PROJECT_SYNC_LIST settings:
 
     $ project sync <project_name>
 
-    If using DEFAULT_PROJECT_HOST and DEFAULT_PROJECT_SYNC_LIST settings:
+If using DEFAULT_PROJECT_HOST and DEFAULT_PROJECT_SYNC_LIST settings:
 
     $ project sync
 
