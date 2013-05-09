@@ -18,14 +18,14 @@ Installation is straight forward:
 
 1. Clone the repository to a local machine (e.g. Mac laptop, etc):
 
-    mkdir .projux
-    git clone git://github.com/mdreves/projux.git .projux
+        mkdir .projux
+        git clone git://github.com/mdreves/projux.git .projux
 
 2. Source the projux `.projectrc` script from `~/.bashrc`
 
-    if [ -f .projux/.projectrc ]; then
-      . .projux/.projectrc
-    fi
+        if [ -f .projux/.projectrc ]; then
+          . .projux/.projectrc
+        fi
 
 3. Add projects to `~/.projects`
 
@@ -62,17 +62,17 @@ A basic workflow might be as follows:
 
 1. Setup project's enviroment variables and aliases:
 
-    $ vi ~/.projects
+        $ vi ~/.projects
 
-      PROJECT_NAME=foo
-      PROJECT_TYPE=scala
-      PROJECT_TYPE=overthere
-      ...
-      alias deploy='my_deploy_script'
-      ...
+          PROJECT_NAME=foo
+          PROJECT_TYPE=scala
+          PROJECT_TYPE=overthere
+          ...
+          alias deploy='my_deploy_script'
+          ...
 
-      PROJECT_NAME=bar
-      ...
+          PROJECT_NAME=bar
+          ...
 
 NOTE: All environment vars and aliases from the project matching `PROJECT_NAME`
 up to the next `PROJECT_NAME` entry will be loaded whenever the
@@ -80,16 +80,16 @@ up to the next `PROJECT_NAME` entry will be loaded whenever the
 
 2. Setup project sync list and synchronize local/remote hosts
 
-    $ vi ~/.projectsync
+        $ vi ~/.projectsync
 
-    .projects
-    ...
+        .projects
+        ...
 
-    $ project sync overthere
+        $ project sync overthere
 
 3. Attach to remote project
 
-    $ project attach foo
+        $ project attach foo
 
 NOTE: By default this will attach to the first TMUX window listed in
 `DEFAULT_PROJECT_WINDOWS` with a TMUX session named after the project.
@@ -98,7 +98,7 @@ NOTE: By default this will attach to the first TMUX window listed in
 
 5. Open a second terminal session to project
 
-    $ project attach foo 2
+        $ project attach foo 2
 
 NOTE: By default this will attach to the second TMUX window listed in
 `DEFAULT_PROJECT_WINDOWS` with a TMUX session named after the project
@@ -106,43 +106,43 @@ but with `_2` append (e.g. `foo_2`).
 
 6. In second terminal window `build`, `test`, ...
 
-    $ format
-    $ lint
-    $ build
-    $ test
-    ...
+        $ format
+        $ lint
+        $ build
+        $ test
+        ...
 
 7. Switch first terminal session to another project
 
-    $ project bar
+        $ project bar
 
 8. Hack in vim in new project
 
 9. Switch to second terminal session of new project
 
-    $ project bar 2
-    $ build
+        $ project bar 2
+        $ build
 
 10. Temporarily update tests to a specific test
 
-    $ settest bar_test
-    $ test
+        $ settest bar_test
+        $ test
 
 11. Reload original project settings
 
-    $ project bar 2
+        $ project bar 2
 
 12. Switch first terminal back to first project...
 
-    $ project foo
+        $ project foo
 
 13. Detach from terminal 1
 
-    $ project detach
+        $ project detach
 
 14. Reattach right where we left off...
 
-    $ project attach foo
+        $ project attach foo
 
 ...
 
