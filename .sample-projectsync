@@ -1,0 +1,9 @@
+.projux/.projectrc
+.projects
+.projectsync
+.bashrc
+.gitignore
+.tmux.conf
+.vimrc
+.vim/
+bin/

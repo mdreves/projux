@@ -1,0 +1,135 @@
+################################################################################
+# Copyright 2011-2012 Mike Dreves
+#
+# All rights reserved. This program and the accompanying materials
+# are made available under the terms of the Eclipse Public License v1.0
+# which accompanies this distribution, and is available at:
+#
+#  http://opensource.org/licenses/eclipse-1.0.php
+#
+# By using this software in any fashion, you are agreeing to be bound
+# by the terms of this license. You must not remove this notice, or any
+# other, from this software. Unless required by applicable law or agreed
+# to in writing, software distributed under the License is distributed
+# on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+# either express or implied.
+################################################################################
+
+################################################################################
+# Project settings
+#
+# This file is read from .projectrc to configure project specific settings. Both
+# per project environment variables and per project aliases can be configured.
+# Entries are grouped per project (e.g. git project directory). The PROJECT_NAME
+# environment variable should be first in the list. All vars/aliases after this
+# setting and before the next PROJECT_NAME setting will updated whenever the
+# 'project' command is called with a name matching the project name.
+#
+# Example:
+#   PROJECT_NAME=foo
+#   PROJECT_TYPE=scala
+#   PROJECT_HOST=mybuild-machine
+#   PROJECT_WINDOWS="vim,bash,repl"
+#   PROJECT_BUG=555555
+#   PROJECT_DIR=${HOME}/Workspace/${PROJECT_NAME}
+#   PROJECT_PKG=some/dir                      # project root pkg dir
+#   PROJECT_SRC_DIR=${PROJECT_DIR}/src
+#   PROJECT_TEST_DIR=${PROJECT_DIR}/test
+#   PROJECT_BUILD_DIR=${PROJECT_DIR}          # Used for both lint/build
+#   PROJECT_RUN_DIR=${PROJECT_DIR}/target     # Contains built executable
+#   PROJECT_DEFAULT_FORMAT_TARGETS="${PROJECT_SRC_DIR}/${PROJECT_PKG}/..."
+#   PROJECT_DEFAULT_LINT_TARGETS="${PROJECT_SRC_DIR}/${PROJECT_PKG}/..."
+#   PROJECT_DEFAULT_BUILD_TARGETS=":all"
+#   PROJECT_DEFAULT_TEST_TARGETS="FooTest BarTest"
+#   PROJECT_TARGETS_IGNORE="/tmp"
+#   PROJECT_DEFAULT_RUN_CMDS="client::client --flags server::server --port=1234"
+#   PROJECT_SHARE_DIR=~/Public/${PROJECT_NAME}
+#   PROJECT_BACKUP_DIR=~/backups/${PROJECT_NAME}
+#   PROJECT_SYNC_LIST=~/.projectsync
+#   PROJECT_SYNC_DESTs=~
+#   PROJECT_SEARCH_FN=my_search
+#   PROJECT_LINT_FN=my_lint
+#   PROJECT_FORMAT_FN=my_format
+#   PROJECT_BUILD_FN=my_build
+#   PROJECT_TEST_FN=my_test
+#   PROJECT_COVERAGE_FN=my_coverage
+#   PROJECT_GETERRORS_FN=my_geterrors
+#   PROJECT_GETURL_FN=my_geturl
+#   PROJECT_SANITY_FN=my_sanity
+#   alias deploy='my_deploy_script'
+#   alias undeploy='my_undeploy_script'
+#
+# The characters '...' mean apply a target recursively to the given directory.
+#
+# NOTE: For PROJECT_DEFAULT_RUN_CMDS multiple executables can be tagged with
+#   label:: to distinguish them. The label is then provided to the run
+#   command to select the appropriate program. If no label is provided then
+#   the first entry is used.
+#
+#   For example:
+#     PROJECT_DEFAULT_RUN_CMDS="foo::xxx --flags bar::yyy --flags bat:zzz"
+#     $ run foo       # runs xxx --flags
+#     $ run bar       # runs yyy --flags
+#     $ run           # runs xxx --flags
+#
+# In some cases, if a project variable is not set directly here a default
+# value can be assigned from DEFAULT_XXX enviornment vars that can be
+# pre-configured in .bashrc. The following vars support defaults:
+#
+#   DEFAULT_PROJECT_HOST  (built-in default is $(hostname))
+#   DEFAULT_PROJECT_WINDOWS  (built-in default is "vim,bash")
+#   DEFAULT_PROJECT_TARGETS_IGNORE  (built-in default is "/tmp,/backup")
+#   DEFAULT_PROJECT_SHARE_DIR (built-in default is "~/Public/<project_name>")
+#   DEFAULT_PROJECT_BACKUP_DIR  (built-in default is "~/backups/<project_name>")
+#   DEFAULT_PROJECT_SYNC_LIST  (built-in default is "~/projectsync")
+#   DEFAULT_PROJECT_SYNC_DESTS  (built-in default is "~")
+#   DEFAULT_PROJECT_SEARCH_FN
+#   DEFAULT_PROJECT_LINT_FN
+#   DEFAULT_PROJECT_FORMAT_FN
+#   DEFAULT_PROJECT_BUILD_FN
+#   DEFAULT_PROJECT_TEST_FN
+#   DEFAULT_PROJECT_COVERAGE_FN
+#   DEFAULT_PROJECT_GETERRORS_FN
+#   DEFAULT_PROJECT_GETURL_FN
+#   DEFAULT_PROJECT_SANITY_FN
+#
+# Normally all the XX_FN variables will be set once in .bashrc via the
+# DEFAULT version to customize all settings to given build environment.
+
+# example1
+PROJECT_NAME=example1
+PROJECT_TYPE=scala
+PROJECT_HOST=mybuild-machine
+PROJECT_WINDOWS="vim,bash,repl"
+PROJECT_PKG=com/example1
+PROJECT_BUG=1234
+PROJECT_DIR=${HOME}/Workspace/${PROJECT_NAME}
+PROJECT_SRC_DIR=${PROJECT_DIR}/src
+PROJECT_TEST_DIR=${PROJECT_DIR}/test
+PROJECT_BUILD_DIR=${PROJECT_DIR}
+PROJECT_RUN_DIR=${PROJECT_DIR}/target
+PROJECT_DEFAULT_BUILD_TARGETS="${PROJECT_PKG}/..."
+PROJECT_DEFAULT_LINT_TARGETS="${PROJECT_PKG}/..."
+PROJECT_DEFAULT_FORMAT_TARGETS="${PROJECT_PKG}/..."
+PROJECT_DEFAULT_TEST_TARGETS="${PROJECT_PKG}/..."
+PROJECT_DEFAULT_RUN_CMDS="client::client -log_dir=log -server=localhost:54321 server::server -port=54321"
+alias deploy="scala_deploy_script"
+
+# example2
+PROJECT_NAME=example2
+PROJECT_TYPE=python
+PROJECT_HOST=mybuild-machine
+PROJECT_WINDOWS="vim,bash,repl"
+PROJECT_PKG=example2
+PROJECT_BUG=5678
+PROJECT_DIR=${HOME}/Workspace/${PROJECT_NAME}
+PROJECT_SRC_DIR=${PROJECT_DIR}
+PROJECT_TEST_DIR=${PROJECT_DIR}
+PROJECT_BUILD_DIR=${PROJECT_DIR}
+PROJECT_RUN_DIR=${PROJECT_DIR}
+PROJECT_DEFAULT_BUILD_TARGETS="${PROJECT_PKG}/..."
+PROJECT_DEFAULT_LINT_TARGETS="${PROJECT_PKG}/..."
+PROJECT_DEFAULT_FORMAT_TARGETS="${PROJECT_PKG}/..."
+PROJECT_DEFAULT_TEST_TARGETS="${PROJECT_PKG}/..."
+PROJECT_DEFAULT_RUN_CMDS="client::client -log_dir=log -server=localhost:54321 server::server -port=54321"
+alias deploy="python_deploy_script"

@@ -1,0 +1,2383 @@
+###############################################################################
+# Copyright 2012-2013 Mike Dreves
+#
+# All rights reserved. This program and the accompanying materials
+# are made available under the terms of the Eclipse Public License v1.0
+# which accompanies this distribution, and is available at:
+#
+#  http://opensource.org/licenses/eclipse-1.0.php
+#
+# By using this software in any fashion, you are agreeing to be bound
+# by the terms of this license. You must not remove this notice, or any
+# other, from this software. Unless required by applicable law or agreed
+# to in writing, software distributed under the License is distributed
+# on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+# either express or implied.
+###############################################################################
+
+###############################################################################
+# Projux
+# -----------------------------------------------------------------------------
+#
+# See function comments and ~/.projects for examples of features.
+#
+#
+# General Environment Variables:
+# -----------------------------------------------------------------------------
+#   PROJECT_NAME
+#     Project name.
+#
+#   PROJECT_TYPE
+#     Type of project (scala, java, go, etc).
+#
+#   PROJECT_HOST
+#     Server project should be built/run/etc from (localhost, myserver, etc).
+#
+#   DEFAULT_PROJECT_HOST
+#     Default project server to use if PROJECT_HOST not set.
+#
+#   PROJECT_WINDOWS
+#     CSV list of tmux windows to open when project session started
+#     (e.g. "bash,repl").
+#
+#   DEFAULT_PROJECT_WINDOWS
+#     Default list of tmux windows to use if PROJECT_WINDOWS not set.
+#
+#   PROJECT_BUG
+#     Current bug ID for work being done in project.
+#
+#   PROJECT_DIR
+#     Main project directory
+#
+#   PROJECT_PKG
+#     Main package for project (e.g. com/foo/bar).
+#
+#   PROJECT_SRC_DIR
+#     Source directory for project (e.g. $PROJECT_DIR/src).
+#
+#   PROJECT_TEST_DIR
+#     Test directory for project (e.g. $PROJECT_DIR/test).
+#
+#   PROJECT_BUILD_DIR
+#     Directory to use when running builds or linting.
+#
+#   PROJECT_RUN_DIR
+#     Directory to use when running program.
+#
+#   PROJECT_DEFAULT_FORMAT_TARGETS
+#     Default targets to use when format called without parameters (e.g.
+#     ${PROJECT_DIR}/${PROJECT_PKG}/**)
+#
+#   PROJECT_DEFAULT_LINT_TARGETS
+#     Default targets to use when lint called without parameters (e.g.
+#     ${PROJECT_DIR}/${PROJECT_PKG}/**)
+#
+#   PROJECT_DEFAULT_BUILD_TARGETS
+#     Default targets to use when build called without parameters (e.g.
+#     ${PROJECT_DIR}/${PROJECT_PKG}/:all)
+#
+#   PROJECT_DEFAULT_TEST_TARGETS
+#     Default targets to use when test called without parameters (e.g.
+#     FooTest BarTest)
+#
+#   PROJECT_TARGETS_IGNORE
+#     This variable is set to a comma separated list of names matching
+#     targets to ignore when searching for matches for build/lint/...
+#     (e.g. /tmp, /backup, etc). Any matching occurrence of these tags
+#     within a target will match (e.g. /tmp means */tmp*)
+#
+#   PROJECT_DEFAULT_TARGETS_IGNORE
+#     Default targets to ignore when PROJECT_TARGETS_IGNORE not set.
+#
+#   PROJECT_DEFAULT_RUN_CMDS
+#     Commands to use when run called. A single command can be specified or a
+#     list of commands can used by lablling them as label::<cmd>
+#     (e.g. foo::foo --flags bar::bar --other_flags).
+#
+#
+# Project Function Implementaiton Environment Variables:
+# -----------------------------------------------------------------------------
+#   PROJECT_SEARCH_FN
+#     Name of function to call when 'search' invoked within the project.
+#
+#   DEFAULT_PROJECT_SEARCH_FN
+#     Default function to use if PROJECT_SEARCH_FN not set.
+#
+#   PROJECT_FORMAT_FN
+#     Name of function to call when 'format' invoked within the project.
+#
+#   DEFAULT_PROJECT_FORMAT_FN
+#     Default function to use if PROJECT_FORMAT_FN not set.
+#
+#   PROJECT_LINT_FN
+#     Name of function to call when 'lint' invoked within the project.
+#
+#   DEFAULT_PROJECT_LINT_FN
+#     Default function to use if PROJECT_LINT_FN not set.
+#
+#   PROJECT_BUILD_FN
+#     Name of function to call when 'build' invoked within the project.
+#
+#   DEFAULT_PROJECT_BUILD_FN
+#     Default function to use if PROJECT_BUILD_FN not set.
+#
+#   PROJECT_TEST_FN
+#     Name of function to call when 'test' invoked within the project.
+#
+#   DEFAULT_PROJECT_TEST_FN
+#     Default function to use if PROJECT_TEST_FN not set.
+#
+#   PROJECT_COVERAGE_FN
+#     Name of function to call when 'coverage' invoked within the project.
+#
+#   DEFAULT_PROJECT_COVERAGE_FN
+#     Default function to use if PROJECT_COVERAGE_FN not set.
+#
+#   PROJECT_GETERRORS_FN
+#     Name of function to call when 'geterrors' invoked within the project.
+#
+#   DEFAULT_PROJECT_GETERRORS_FN
+#     Default function to use if PROJECT_GETERRORS_FN not set.
+#
+#   PROJECT_GETURLS_FN
+#     Name of function to call when 'geturls' invoked within the project.
+#
+#   DEFAULT_PROJECT_GETURLS_FN
+#     Default function to use if PROJECT_GETURLS_FN not set.
+#
+#   PROJECT_SANITY_FN
+#     Name of function to call when 'sanity' invoked within the project.
+#
+#   DEFAULT_PROJECT_SANITY_FN
+#     Default function to use if PROJECT_SANITY_FN not set.
+#
+#
+# Sharing/Syncing/Backup/... Environment Variables:
+# -----------------------------------------------------------------------------
+#   PROJECT_SHARE_DIR
+#     This variable is set to the directory to use for copying executables
+#     for sharing publically (e.g. ~/Public).
+#
+#   DEFAULT_PROJECT_SHARE_DIR
+#     Default to use when PROJECT_SHARE_DIR not set.
+#
+#   PROJECT_BACKUP_DIR
+#     This variable is set to the directory to use for project backups when
+#     the 'project backup' command is used.
+#
+#   DEFAULT_PROJECT_BACKUP_DIR
+#     Default to use when PROJECT_BACKUP_DIR not set.
+#
+#   PROJECT_SYNC_LIST
+#     This variable is set to the name of a file containing a list of files
+#     that should be synchronized from the local host to the project host
+#     when using 'project sync' command. Listed files are specified relative
+#     to the local home directory.
+#
+#   DEFAULT_PROJECT_SYNC_LIST
+#     Default to use when PROJECT_SYNC_LIST not set. By default this is called
+#     ~/.projectsync which contains ~/.projects.
+#
+#   PROJECT_SYNC_DESTS
+#     Comma separated list of directories to sync files to on remote host.
+#
+#   DEFAULT_PROJECT_SYNC_DESTS
+#     Default to use when PROJECT_SYNC_DESTS not set. Typically this will just
+#     be ~.
+#
+#
+# Misc Environment Variables:
+# -----------------------------------------------------------------------------
+#   PROXY_CMDS
+#     Set to true to proxy commands to remote host when running locally.
+#
+#
+# Common local (per command) Variables/Flags:
+# -----------------------------------------------------------------------------
+#   -p <project>[:<win>]
+#     Some commands accept a -p flag to specify the project to run the command
+#     against. If used, this must come before other cmd args. When used the
+#     current project will not be changed, instead the command will be sent over
+#     tmux to the project window specified with :<win> (or the first window if
+#     :<win> not specified).
+#
+#   VERBOSE
+#     Some commands take a VERBOSE environment variable. This is a level setting
+#     not on/off. Level 0 effectively means off which is different than most
+#     flags in bash where 0 is success). Many commands do not support verbose
+#     output yet, so don't expect much.
+#
+#   DRY_RUN
+#     The dry run flag will print the command that will execute, but not
+#     actualy execute it. This is a true/false settings (e.g. DRY_RUN=true)
+################################################################################
+
+################################################################################
+# Vars and Aliases
+################################################################################
+
+if [[ -z "${DEFAULT_PROJECT_HOST}" ]]; then
+  DEFAULT_PROJECT_HOST=$(hostname)  # Use local project host if not set
+fi
+
+if [[ -z "${DEFAULT_PROJECT_WINDOWS}" || \
+    ${#DEFAULT_PROJECT_WINDOWS} -eq 0 ]]; then
+  DEFAULT_PROJECT_WINDOWS="vim,bash"  # Comma separated list
+fi
+
+if [[ -z "${DEFAULT_PROJECT_TARGETS_IGNORE}" ]]; then
+  DEFAULT_PROJECT_TARGETS_IGNORE="/tmp,/backup"
+fi
+
+if [[ -z "${DEFAULT_PROJECT_SHARE_DIR}" ]]; then
+  DEFAULT_PROJECT_SHARE_DIR="~/Public"
+fi
+
+if [[ -z "${DEFAULT_PROJECT_BACKUP_DIR}" ]]; then
+  DEFAULT_PROJECT_BACKUP_DIR="~/backups"
+fi
+
+if [[ -z "${DEFAULT_PROJECT_SYNC_LIST}" ]]; then
+  DEFAULT_PROJECT_SYNC_LIST="${HOME}/.projectsync"
+fi
+
+if [[ -z "${DEFAULT_PROJECT_SYNC_DESTS}" ]]; then
+  DEFAULT_PROJECT_SYNC_DESTS="~"
+fi
+
+if [[ -z "${PROXY_CMDS}" ]]; then
+  PROXY_CMDS=true  # Proxy cmds to project host if run locally
+fi
+
+# Useful tmux aliases
+#alias tmux='tmux -2'   # force 256 color support
+alias tmux='TERM=screen-256color-bce tmux -2'
+
+# Project directory aliases
+alias cdsrc='cd "${PROJECT_SRC_DIR}/${PROJECT_PKG}"'
+alias pushsrc='pushd "${PROJECT_SRC_DIR}/${PROJECT_PKG}"'
+alias cdcommon='cd "${PROJECT_SRC_DIR}/${PROJECT_PKG}/../common"'
+alias pushcommon='pushd "${PROJECT_SRC_DIR}/${PROJECT_PKG}/../common"'
+alias cdproject='cd "${PROJECT_DIR}"'
+alias pushproject='pushd "${PROJECT_DIR}"'
+alias cdbuild='cd "${PROJECT_BUILD_DIR}"'
+alias pushbuild='pushd "${PROJECT_BUILD_DIR}"'
+alias cdtest='cd "${PROJECT_TEST_DIR}/${PROJECT_PKG}"'
+alias pushdtest='pushd "${PROJECT_TEST_DIR}/${PROJECT_PKG}"'
+alias cdrun='cd "${PROJECT_RUN_DIR}"'
+alias pushrun='pushd "${PROJECT_RUN_DIR}"'
+
+# Project url aliases/functions
+function openbug() { open $(geturl bug "${1}"); }
+function openreview() { open $(geturl review "${1}"); }
+alias openbuild='open $(geturl build)'
+alias opentest='open $(geturl test)'
+alias opencoverage='open $(geturl coverage)'
+
+
+################################################################################
+# Main Functions
+################################################################################
+
+################################################################################
+# SSH to project host
+################################################################################
+function sshproj() {
+  host=${PROJECT_HOST-DEFAULT_PROJECT_HOST}
+  if _is_project_local; then
+    host=${DEFAULT_PROJECT_HOST}
+  fi
+  ssh -Y -t ${host}
+}
+
+################################################################################
+# SFTP to project host
+################################################################################
+function sftpproj() {
+  host=${PROJECT_HOST-DEFAULT_PROJECT_HOST}
+  if _is_project_local; then
+    host=${DEFAULT_PROJECT_HOST}
+  fi
+  sftp ${host}
+}
+
+
+################################################################################
+# Project command.
+#
+# REQUIREMENTS: project entries have been added to ~/.projects
+#
+# Examples:
+#   project              # show current project
+#   project ls           # show all known projects
+#   project foo          # if attached switch to foo, if detached init foo vars
+#   project attach       # attach to tmux for current project
+#   project attach 2     # attach/switch to 2nd session for current project
+#   project attach foo   # attach/switch to foo project
+#   project attach foo 3 # attach/switch to 3rd session for project foo
+#   project detach       # detach cur client from cur project
+#   project detach foo   # detach all clients attached to foo project
+#   project detach foo 2 # detach all clients attached to 2nd session to foo
+#   project kill         # kill all of current project's tmux sessions
+#   project kill foo     # kill all of foo project's tmux sessions
+#   project kill foo 1   # kill main session of project foo
+#   project kill foo 2   # kill 2nd session of project foo
+#   project sessions     # show all attached project sessions
+#   project settings     # show project env var settings
+#   project settings foo # show project foo's env var settings
+#   project sync         # syncs local files with remote project host
+#   project sync foo     # syncs local files with foo's project host
+#   project backup       # backs up changed project files to PROJECT_BACKUP_DIR
+#   project backup foo   # backup changed proj foo files to PROJECT_BACKUP_DIR
+#   project companion    # show companion group session assoc with cur session
+#
+# Args:
+#   $* (optional): ls
+#                  <project_name> [<instance>]
+#                  attach [<project_name>] [<instance>]
+#                  detach [<project_name>] [<instance>]
+#                  kill [<project_name>] [<instance>]
+#                  sessions
+#                  settings [<project_name>]
+#                  sync [<project_name>]
+#                  backup [<project_name>]
+#                  companion [<project_name>] [<instance>]
+################################################################################
+function project() {
+  shopt -q nocasematch
+  local orig_nocasematch=$?
+  shopt -s nocasematch
+
+  local cur_session=$(tmux display-message -p "#S" 2> /dev/null)
+  if [[ $# -eq 0 ]]; then
+    if [[ -n "${cur_session}" ]]; then
+      echo "${cur_session} (attached)"
+    else
+      echo "${PROJECT_NAME}"
+    fi
+    return 0
+  elif [[ "${1}" == "ls" ]]; then
+    _project_ls
+    return 0
+  elif [[ "${1}" == "sessions" ]]; then
+    tmux ls -F"#{session_name}"
+    return 0
+  fi
+
+  # Remaining commands require project name
+  local project_name="${PROJECT_NAME-$(_default_project)}"
+  local instance=""
+  if [[ "${1}" == "attach" || "${1}" == "detach" || "${1}" == "kill" || \
+      "${1}" == "settings" || "${1}" == "backup" || "${1}" == "sync" || \
+      "${1}" == "companion" ]]; then
+    if [[ -n "${2}" ]]; then
+      if [[ "${2}" =~ ^[0-9]+$ ]]; then
+        instance="${2}"  # e.g. xxx 2
+      else
+        project_name="${2}" # e.g. xxx foo
+        if [[ -n "${3}" ]]; then
+          instance="${3}"  # e.g. xxx foo 2
+        fi
+      fi
+    elif [[ "${cur_session}" =~ _[0-9]+$ ]]; then
+      instance="${cur_session:${#cur_session}-1}" # default project/instance
+    fi
+  elif [[ -n "${1}" ]]; then
+    if [[ "${1}" =~ _[0-9]+$ ]]; then  # foo_2
+      project_name="${1:0:${#1}-2}"  # foo
+      instance="${1:${#1}-1}"  # 2
+    else
+      project_name="${1}"  # foo
+      if [[ "${2}" =~ ^[0-9]+$ ]]; then
+        instance="${2}"  # e.g. foo 2
+      fi
+    fi
+  fi
+
+  # Validate the project exists
+  if ! _project_exists "${project_name}"; then
+    local msg="Project entry for '${project_name}' not found in ~/.projects"
+    echo "$(tput setaf 1)${msg}$(tput sgr0)"
+    if [[ $orig_nocasematch -eq 1 ]]; then shopt -u nocasematch; fi
+    return 1
+  fi
+
+  # Session id is used by many commands, save it in var
+  if [[ -z "${instance}" || "${instance}" == "1" ]]; then
+    local session="${project_name}"
+  else
+    local session="${project_name}_${instance}"
+  fi
+
+  if [[ "${1}" == "companion" ]]; then
+    if [[ -z "${instance}" ]]; then
+      echo "${project_name}_2"
+    else
+      echo "${project_name}"
+    fi
+  elif [[ "${1}" == "settings" ]]; then
+    _project_settings "${project_name}"
+  elif [[ "${1}" == "backup" ]]; then
+    _project_backup "${project_name}"
+  elif [[ "${1}" == "sync" ]]; then
+    _project_sync "${project_name}"
+  elif [[ "${1}" == "refresh" ]]; then
+    pushd "${PROJECT_SRC}" &> /dev/null
+    build clean
+    build :all
+    popd &> /dev/null
+  elif [[ "${1}" == "attach" ]]; then
+    # Connect to project (this handles cases where we are already in project)
+    env_vars=$(_project_vars "${project_name}")
+    # Always set projects vars before cmd (may be a project specific host set)
+    eval "${env_vars} _project_attach ${project_name} ${instance}"
+  elif [[ "${1}" == "detach" ]]; then
+    if [[ -z "${2}" ]]; then
+      tmux detach  # no session specified, only detach this client
+    else
+      tmux detach -s "${session}"  # detach all clients attach to passed session
+    fi
+  elif [[ "${1}" == "kill" ]]; then
+    if [[ ! "${2}" =~ [0-9] && ! "${3}" =~ [0-9] ]]; then
+      # Kill sub-sessions too
+      for s in `tmux ls -F"#{session_name}" | grep ${project_name}`; do
+        # Don't kill cur session or will lose session before sub-sessions killed
+        if [[ "${cur_session}" != "${s}" ]]; then
+          tmux kill-session -t "${s}"
+        fi
+      done
+    fi
+    tmux kill-session -t "${session}" &> /dev/null
+  else
+    local cur_session=$(tmux display-message -p "#S" 2> /dev/null)
+    if [[ -z "${cur_session}" ]]; then
+      if [[ -n "${instance}" ]]; then
+        local msg="ERROR: Must be attached to use multiple project instances"
+        echo "$(tput setaf 1)${msg}$(tput sgr0)"
+      else
+        # Not attached, just init proj
+        _project_init "${project_name}"
+      fi
+    else
+      # Currently attached, switch projects
+      env_vars=$(_project_vars "${project_name}")
+      # Always set projects vars before cmd (may be a project specific host set)
+      eval "${env_vars} _project_attach ${project_name} ${instance}"
+    fi
+  fi
+
+  if [[ $orig_nocasematch -eq 1 ]]; then shopt -u nocasematch; fi
+
+  return 0
+}
+
+
+################################################################################
+# Selects/creates tmux window in current project.
+#
+# REQUIREMENTS: project attached (via 'project attach').
+#
+# Examples:
+#   win                     # display current window
+#   win ls                  # list windows
+#   win new foo             # create new window
+#   win session             # switch to window assoc with session (foo_2 => 2)
+#   win bash                # switch to bash window
+#   win repl                # switch to repl window
+#
+# Args:
+#   $* [new] <window_name>
+################################################################################
+function win() {
+  if [[ "${1}" == "session" ]]; then
+    local session=$(tmux display-message -p "#S" 2> /dev/null)
+    local win_num=${session##*_}
+  else
+    local win_num=$(tmux display-message -p "#I" 2> /dev/null)
+  fi
+
+  # no tmux sessions, exit
+  if [[ -z "${win_num}" ]]; then
+    return 1
+  fi
+
+  local win_name=$(\
+      tmux list-windows | grep ${win_num}":" | awk '{print $2}')
+
+  if [[ -z "${1}" ]]; then
+    echo "${win_name}"
+    return
+  fi
+
+  if [[ "${1}" == "ls" ]]; then
+    tmux list-windows | awk '{print $2}'
+  elif [[ "${1}" == "new" ]]; then
+    shift
+    tmux new-window -d -n "$*"
+  else
+    tmux select-window -t "$*"
+  fi
+}
+
+################################################################################
+# Selects/creates tmux pane in current project.
+#
+# REQUIREMENTS: project attached (via 'project attach').
+#
+# Examples:
+#   pane                    # display current pane
+#   pane ls                 # list panes
+#   pane new                # create new horizontal pane
+#   pane split              # create new horizontal pane
+#   pane vsplit             # create new vertial pane
+#   pane 3                  # switch to pane 3  (ctrl-a o)
+#   pane %5                 # switch to pane with global id 5
+#
+# Args:
+#   $* [new] <window_name>
+################################################################################
+function pane() {
+  local pane_num=$(tmux display-message -p "#P")
+  local global_pane_num=$(\
+      tmux list-panes | grep "${pane_num}"":" | awk '{print $7}')
+
+  if [[ -z "${1}" ]]; then
+    echo "${pane_num} (global: ${global_pane_num})"
+    return
+  fi
+
+  if [[ "${1}" == "ls" ]]; then
+    tmux list-panes | \
+        awk '{print substr($1,0,1) " (global: " $7 ")"}'
+  elif [[ "${1}" == "new" || "${1}" == "split" ]]; then
+    tmux split-window -d
+  elif [[ "${1}" == "vsplit" ]]; then
+    tmux split-window -d -h
+  else
+    tmux select-pane -t "$*"
+  fi
+}
+
+################################################################################
+# Searches code base.
+#
+# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+#
+# This function relies on the existance of a function pointed to by the
+# PROJECT_SEARCH_FN environment variable (set in ~/.projects) or
+# DEFAULT_PROJECT_SEARCH_FN (set in ~/.bashrc).
+#
+# Examples:
+#   search foo
+#   search -p xxx foo         # searches foo in project xxx
+#   VERBOSE=0 search foo
+#   DRY_RUN=true search foo
+#
+# Args:
+#   keywords: List of keywords to search for
+################################################################################
+function search() {
+  local project_name="${PROJECT_NAME}"
+  if [[ "${1}" == "-p" ]]; then
+    shift
+    project_name="${1}"
+    shift
+  fi
+
+  if [[ "${project_name}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
+    _tmux_send "$(_default_project_win ${project_name})" "search" $*
+    return $?
+  fi
+
+  # Strip any :win if passed
+  project_name="${project_name%%:*}"
+
+  local cmd="$PROJECT_SEARCH_FN $@"
+  eval "$cmd"
+}
+
+################################################################################
+# Runs format.
+#
+# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+#
+# This function relies on the existance of a function pointed to by the
+# PROJECT_FORMAT_FN environment variable (set in ~/.projects) or
+# DEFAULT_PROJECT_FORMAT_FN (set in ~/.bashrc).
+#
+# Examples:
+#   format             # default targets (e.g. DEFAULT_PROJECT_FORMAT_TARGETS)
+#   format :all        # all targets
+#   format -p xxx :all # format all in project xxx
+#   VERBOSE=0 format
+#   DRY_RUN=true format
+#
+# Args:
+#   target (optional): Target.
+################################################################################
+function format() {
+  local project_name="${PROJECT_NAME}"
+  if [[ "${1}" == "-p" ]]; then
+    shift
+    project_name="${1}"
+    shift
+  fi
+
+  if [[ "${project_name}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
+    _tmux_send "$(_default_project_win ${project_name})" "format" $*
+    return $?
+  fi
+
+  # Strip any :win if passed
+  project_name="${project_name%%:*}"
+
+  local cmd="$PROJECT_FORMAT_FN $@"
+  eval "$cmd"
+}
+
+################################################################################
+# Runs lint.
+#
+# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+#
+# This function relies on the existance of a function pointed to by the
+# PROJECT_LINT_FN environment variable (set in ~/.projects) or
+# DEFAULT_PROJECT_LINT_FN (set in ~/.bashrc).
+#
+# Examples:
+#   lint             # default targets (e.g. DEFAULT_PROJECT_LINT_TARGETS)
+#   lint :all        # all targets
+#   lint -p xxx :all # lint all in project xxx
+#   VERBOSE=0 lint
+#   DRY_RUN=true lint
+#
+# Args:
+#   target (optional): Target.
+################################################################################
+function lint() {
+  local project_name="${PROJECT_NAME}"
+  if [[ "${1}" == "-p" ]]; then
+    shift
+    project_name="${1}"
+    shift
+  fi
+
+  if [[ "${project_name}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
+    _tmux_send "$(_default_project_win ${project_name})" "lint" $*
+    return $?
+  fi
+
+  # Strip any :win if passed
+  project_name="${project_name%%:*}"
+
+  local cmd="$PROJECT_LINT_FN $@"
+  eval "$cmd"
+}
+
+################################################################################
+# Runs build.
+#
+# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+#
+# This function relies on the existance of a function pointed to by the
+# PROJECT_BUILD_FN environment variable (set in ~/.projects) or
+# DEFAULT_PROJECT_BUILD_FN (set in ~/.bashrc).
+#
+# Examples:
+#   build             # default targets (e.g. DEFAULT_PROJECT_BUILD_TARGETS)
+#   build :all        # all targets
+#   build foo         # foo target
+#   build :clean
+#   build -p xxx :all # build all in project xxx
+#   VERBOSE=0 build
+#   DRY_RUN=true build
+#
+# Args:
+#   target (optional): Target (clean, foo).
+################################################################################
+function build() {
+  local project_name="${PROJECT_NAME}"
+  if [[ "${1}" == "-p" ]]; then
+    shift
+    project_name="${1}"
+    shift
+  fi
+
+  if [[ "${project_name}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
+    _tmux_send "$(_default_project_win ${project_name})" "build" $*
+    return $?
+  fi
+
+  # Strip any :win if passed
+  project_name="${project_name%%:*}"
+
+  local cmd="$PROJECT_BUILD_FN $@"
+  eval "$cmd"
+}
+
+################################################################################
+# Runs tests.
+#
+# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+#
+# This function relies on the existance of a function pointed to by the
+# PROJECT_TEST_FN environment variable (set in ~/.projects) or
+# DEFAULT_PROJECT_TEST_FN (set in ~/.bashrc).
+#
+# Examples:
+#   test                  # default targets (e.g. DEFAULT_PROJECT_TEST_TARGETS)
+#   test :all             # all targets
+#   test foo_class_test
+#   test -p xxx foo_class_test   # test foo_class_test in project xxx
+#   VERBOSE=0 test foo_class_test
+#   DRY_RUN=true test foo_class_test
+#
+# Args:
+#   target (optional): Target.
+################################################################################
+function test() {
+  local project_name="${PROJECT_NAME}"
+  if [[ "${1}" == "-p" ]]; then
+    shift
+    project_name="${1}"
+    shift
+  fi
+
+  if [[ "${project_name}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
+    _tmux_send "$(_default_project_win ${project_name})" "test" $*
+    return $?
+  fi
+
+  # Strip any :win if passed
+  project_name="${project_name%%:*}"
+
+  local cmd="$PROJECT_TEST_FN $@"
+  eval "$cmd"
+}
+
+################################################################################
+# Runs code coverage.
+#
+# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+#
+# This function relies on the existance of a function pointed to by the
+# PROJECT_COVERAGE_FN environment variable (set in ~/.projects) or
+# DEFAULT_PROJECT_COVERAGE_FN (set in ~/.bashrc).
+#
+# Examples:
+#   coverage                         # coverage of PROJECT_DEFAULT_TEST_TARGETS
+#   coverage :local                  # local coverage report of above
+#   coverage foo_test                # coverge of foo_test
+#   coverage :local foo_test         # local coverge report of foo_test
+#   VERBOSE=0 coverage
+#   DRY_RUN=true coverage
+#
+# Args:
+#   local (optional): Run local coverage.
+#   target (optional): Target.
+################################################################################
+function coverage() {
+  local project_name="${PROJECT_NAME}"
+  if [[ "${1}" == "-p" ]]; then
+    shift
+    project_name="${1}"
+    shift
+  fi
+
+  if [[ "${project_name}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
+    _tmux_send "$(_default_project_win ${project_name})" "coverage" $*
+    return $?
+  fi
+
+  # Strip any :win if passed
+  project_name="${project_name%%:*}"
+
+  local cmd="$PROJECT_COVERAGE_FN $@"
+  eval "$cmd"
+}
+
+################################################################################
+# Get errors from last build/lint/test/coverage (where supported).
+#
+# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+#
+# This function relies on the existance of a function pointed to by the
+# PROJECT_GETERRORS_FN environment variable (set in ~/.projects) or
+# DEFAULT_PROJECT_GETERRORS_FN (set in ~/.bashrc).
+#
+# Examples:
+#   geterrors build
+#   geterrors lint
+#   geterrors test
+#   geterrors coverage
+#   VERBOSE=0 geterrors build
+#   DRY_RUN=true geterrors build
+#
+# Args:
+#   type: build, lint, test, ...
+################################################################################
+function geterrors() {
+  local project_name="${PROJECT_NAME}"
+  if [[ "${1}" == "-p" ]]; then
+    shift
+    project_name="${1}"
+    shift
+  fi
+
+  if [[ "${project_name}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
+    _tmux_send "$(_default_project_win ${project_name})" "geterrors" $*
+    return $?
+  fi
+
+  # Strip any :win if passed
+  project_name="${project_name%%:*}"
+
+  local cmd="$PROJECT_GETERRORS_FN $@"
+  eval "$cmd"
+}
+
+################################################################################
+# Gets URL for review/bug/build/lint/test/coverage (where supported).
+#
+# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+#
+# Examples:
+#   geturl review           # default code review url for project
+#   geturl review xxx       # code review xxx
+#   geturl bug              # default bug for project
+#   geturl bug xxx          # bug xxx
+#   geturl build            # last build
+#   geturl test             # last test run
+#   geturl coverage         # last coverage run
+#   VERBOSE=0 geturl build  # verbose
+#   DRY_RUN=true geturl build  # dry-run
+#
+# This function relies on the existance of a function pointed to by the
+# PROJECT_GETURL_FN environment variable (set in ~/.projects) or
+# DEFAULT_PROJECT_GETURL_FN (set in ~/.bashrc).
+#
+# Args:
+#   type: review, bug, build, test, coverage, ...
+#   id: ide for review/bug, etc
+################################################################################
+function geturl() {
+  local project_name="${PROJECT_NAME}"
+  if [[ "${1}" == "-p" ]]; then
+    shift
+    project_name="${1}"
+    shift
+  fi
+
+  if [[ "${project_name}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
+    _tmux_send "$(_default_project_win ${project_name})" "geturl" $*
+    return $?
+  fi
+
+  # Strip any :win if passed
+  project_name="${project_name%%:*}"
+
+  local cmd="$PROJECT_GETURL_FN $@"
+  eval "$cmd"
+}
+
+################################################################################
+# Runs program.
+#
+# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+#
+# Examples:
+#   run                        # run first entry in ${PROJECT_DEFAULT_RUN_CMDS}
+#   run prog                   # run 'prog' entry in ${PROJECT_DEFAULT_RUN_CMDS}
+#   run prog --foo=+bar,+baz   # add 'bar' and 'baz' to --foo flag before run
+#   run prog --foo=-bar        # remove 'bar' from --foo flag before run
+#   run prog --foo=bar         # replace default --foo flag value with bar
+#   run shared prog
+#   run debug prog
+#   VERBOSE=0 run prog
+#   DRY_RUN=true run prog
+#
+# Args:
+#   target: Target (prog)
+#   flags (optional): Flags (shared, debug, quiet)
+################################################################################
+function run() {
+  local project_name="${PROJECT_NAME}"
+  if [[ "${1}" == "-p" ]]; then
+    shift
+    project_name="${1}"
+    shift
+  fi
+
+  if [[ "${project_name}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
+    _tmux_send "$(_default_project_win ${project_name})" "run" $*
+    return $?
+  fi
+
+  # Strip any :win if passed
+  project_name="${project_name%%:*}"
+
+  local debug=false
+  if [[ "${1}" == "debug" ]]; then
+    debug=true
+    shift
+  fi
+
+  local shared=false
+  if [[ "${1}" == "shared" ]]; then
+    shared=true
+    shift
+  fi
+
+  local run_cmd=$(_get_run_cmd ${project_name} $*)
+  local debug_flags=""
+  if $debug; then
+    if [[ "${PROJECT_TYPE}" == "python" ]]; then
+      debug_flags=" --run_with_pdb"
+    fi
+  fi
+
+  local cmd="${PROJECT_RUN_DIR}/${run_cmd}${debug_flags}"
+  if $shared; then
+    cmd="${PROJECT_SHARE_DIR}/${run_cmd}${debug_flags}"
+  fi
+
+  if [[ -z "${VERBOSE}" || ${VERBOSE} -ne 0 ]]; then
+    echo "$(tput setaf 2)RUNNING ------------------------------------------------------------------------"
+    echo "PWD: $PWD"
+    echo "CMD: ${cmd}"
+    echo "--------------------------------------------------------------------------------$(tput sgr0)"
+  fi
+
+  if ! ${DRY_RUN-false}; then
+    $cmd
+  fi
+}
+
+################################################################################
+# Copies named prog file to $PROJECT_SHARE_DIR (on current host) for sharing.
+#
+# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+#
+# Example:
+#   share prog
+#   share -p xxx prog  # share program for project xxx
+#   VERBOSE=1 share prog
+#   DRY_RUN=true share prog
+#
+# Args:
+#   target: Target file to share.
+################################################################################
+function share() {
+  local project_name="${PROJECT_NAME}"
+  if [[ "${1}" == "-p" ]]; then
+    shift
+    project_name="${1}"
+    shift
+  fi
+
+  if [[ "${project_name}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
+    _tmux_send "$(_default_project_win ${project_name})" "share" $*
+    return $?
+  fi
+
+  # Strip any :win if passed
+  project_name="${project_name%%:*}"
+
+  local prog="${1}"
+  if [[ -z "${1}" ]]; then
+    prog="${project_name}"
+  fi
+
+  local run_dir=$(_project_var "${project_name}" "PROJECT_RUN_DIR")
+  local dst="${PROJECT_SHARE_DIR}"
+  local cmd="cp -f ${run_dir}/${prog} ${dst}/${prog}"
+
+  if [[ -z "${VERBOSE}" || ${VERBOSE} -ne 0 ]]; then
+    echo "$(tput setaf 2)SHARING ------------------------------------------------------------------------"
+    echo "PWD: $PWD"
+    echo "CMD: ${cmd}"
+    echo "--------------------------------------------------------------------------------$(tput sgr0)"
+  fi
+
+  if ! ${DRY_RUN-false}; then
+    $cmd
+  fi
+}
+
+################################################################################
+# Runs sanity checks (lint, test, etc) - usually used before submitting code.
+#
+# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+#
+# Examples:
+#   santity
+#   VERBOSE=0 sanity     # verbose
+#   DRY_RUN=true sanity  # dry-run
+#
+# This function relies on the existance of a function pointed to by the
+# PROJECT_SANITY_FN environment variable (set in ~/.projects) or
+# DEFAULT_PROJECT_SANITY_FN (set in ~/.bashrc).
+################################################################################
+function sanity() {
+  local project_name="${PROJECT_NAME}"
+  if [[ "${1}" == "-p" ]]; then
+    shift
+    project_name="${1}"
+    shift
+  fi
+
+  if [[ "${project_name}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
+    _tmux_send "$(_default_project_win ${project_name})" "sanity" $*
+    return $?
+  fi
+
+  # Strip any :win if passed
+  project_name="${project_name%%:*}"
+
+  local cmd="$PROJECT_SANITY_FN $@"
+  eval "$cmd"
+}
+
+################################################################################
+# Gets default tests.
+#
+# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+#
+# Echos PROJECT_DEFAULT_TEST_TARGETS environment variable
+#
+# Example:
+#   gettest
+################################################################################
+function gettest() {
+  local project_name="${PROJECT_NAME}"
+  if [[ "${1}" == "-p" ]]; then
+    shift
+    project_name="${1%%:*}"
+    shift
+  fi
+
+  if [[ "${project_name}" != "${PROJECT_NAME}" ]]; then
+    echo "$(_project_var ${project_name} PROJECT_DEFAULT_TEST_TARGETS)"
+  else
+    echo "$PROJECT_DEFAULT_TEST_TARGETS"
+  fi
+}
+
+################################################################################
+# Sets default tests.
+#
+# Replaces the PROJECT_DEFAULT_TEST_TARGETS environment variable with the
+# specified tests
+#
+# Examples:
+#   settest foo_test ../common/bar_test
+#
+# Args:
+#   targets: Target tests.
+################################################################################
+function settest() {
+  local project_name="${PROJECT_NAME}"
+  if [[ "${1}" == "-p" ]]; then
+    shift
+    project_name="${1}"
+    shift
+  fi
+
+  if [[ "${project_name}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
+    _tmux_send "$(_default_project_win ${project_name})" "settest" $*
+    return $?
+  fi
+
+  # Strip any :win if passed
+  project_name="${project_name%%:*}"
+
+  local targets=""
+  for target in $(_find_targets "$@"); do
+    # Strip pre-package path
+    local normalized_target=${target##${PROJECT_TEST_DIR}}
+    # Remove any extension
+    if [[ -n "${normalized_target##*.}" ]]; then
+      normalized_target=${normalized_target%.*}
+    fi
+    local targets="${targets} ${normalized_target}"
+  done
+
+  export PROJECT_DEFAULT_TEST_TARGETS="${targets}"
+}
+
+################################################################################
+# Updates default tests.
+#
+# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+#
+# Updates the PROJECT_DEFAULT_TEST_TARGETS environment variable to add/remove
+# tests.
+#
+# Example:
+#   updatetest +foo_test -../common/bar_test
+#
+# Args:
+#   targets: Target tests.
+################################################################################
+function updatetest() {
+  local project_name="${PROJECT_NAME}"
+  if [[ "${1}" == "-p" ]]; then
+    shift
+    project_name="${1}"
+    shift
+  fi
+
+  if [[ "${project_name}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
+    _tmux_send "$(_default_project_win ${project_name})" "updatetest" $*
+    return $?
+  fi
+
+  # Strip any :win if passed
+  project_name="${project_name%%:*}"
+
+  # Build list of added/removed items
+  local added=""
+  local removed=""
+  for arg in $*; do
+    if [[ "${arg}" == +* ]]; then
+      arg=${arg:1}
+      added="${add} ${arg}"
+    elif [[ "${arg}" == -* ]]; then
+      arg=${arg:1}
+      removed="${remove} ${arg}"
+    else
+      echo "$(tput setaf 3)Missing -/+ for arg ${arg}$(tput sgr0)"
+    fi
+  done
+
+  # Convert removed items to full targets
+  local removed_targets=""
+  for target in $(_find_targets ${removed}); do
+    # Strip pre-package path
+    local normalized_target=${target##${PROJECT_TEST_DIR}}
+    # Remove any extension
+    if [[ -n "${normalized_target##*.}" ]]; then
+      normalized_target=${normalized_target%.*}
+    fi
+    local removed_targets="${removed_targets} ${normalized_target}"
+  done
+
+  # Filter removed from current targets
+  local targets=""
+  pushd "${PROJECT_TEST_DIR}" &> /dev/null
+  for target in $(_find_targets ${PROJECT_DEFAULT_TEST_TARGETS}); do
+    if [[ ! "${removed_targets}" == *"${target}"* ]]; then
+      if [[ -z "${targets}" ]]; then
+        local targets="${target}"
+      else
+        local targets="${targets} ${target}"
+      fi
+    fi
+  done
+  popd &> /dev/null
+
+  # Convert added items to full targets and add to current
+  for target in $(_find_targets ${added}); do
+    # Strip pre-package path
+    local normalized_target=${target##${PROJECT_TEST_DIR}}
+    # Remove any extension
+    if [[ -n "${normalized_target##*.}" ]]; then
+      normalized_target=${normalized_target%.*}
+    fi
+    if [[ ! "${targets}" == *"${target}"* ]]; then
+      if [[ -z "${targets}" ]]; then
+        local targets="${normalized_target}"
+      else
+        local targets="${targets} ${normalized_target}"
+      fi
+    fi
+  done
+
+  export PROJECT_DEFAULT_TEST_TARGETS="${targets}"
+}
+
+################################################################################
+# Clears default tests.
+#
+# Clears PROJECT_DEFAULT_TEST_TARGETS environment variable
+#
+# Example:
+#   cleartests
+################################################################################
+function cleartest() {
+  local project_name="${PROJECT_NAME}"
+  if [[ "${1}" == "-p" ]]; then
+    shift
+    project_name="${1}"
+    shift
+  fi
+
+  if [[ "${project_name}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
+    _tmux_send "$(_default_project_win ${project_name})" "cleartest" $*
+    return $?
+  fi
+
+  # Strip any :win if passed
+  project_name="${project_name%%:*}"
+
+  export PROJECT_DEFAULT_TEST_TARGETS=""
+}
+
+################################################################################
+# Gets default run cmd.
+#
+# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+#
+# Echos PROJECT_DEFAULT_RUN_CMDS environment variable
+#
+# Examples:
+#   getrun                       # get all commands
+#   getrun foo                   # Gets cmd labeled with foo::
+#   getrun foo --my_flag=+bar    # Gets cmd labeld with foo:: and adds to flag
+#
+# Args:
+#   label: Optional label for run command to return.
+################################################################################
+function getrun() {
+  local project_name="${PROJECT_NAME}"
+  if [[ "${1}" == "-p" ]]; then
+    shift
+    project_name="${1%%:*}"
+    shift
+  fi
+
+  if [[ $# -eq 0 ]]; then
+    echo "$(_project_var ${project_name} PROJECT_DEFAULT_RUN_CMDS)"
+  else
+    local run_dir=$(_project_var ${project_name} PROJECT_RUN_DIR)
+    echo "${run_dir}/$(_get_run_cmd ${project_name} $*)"
+  fi
+}
+
+################################################################################
+# Sets run commands.
+#
+# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+#
+# Replaces the PROJECT_DEFAULT_RUN_CMDS environment variable with specified
+# value.
+#
+# Example:
+#   setrun foo::foo --someflag=some-value bar::bar --otherflag
+#
+# Args:
+#   cmd: Run commands.
+################################################################################
+function setrun() {
+  local project_name="${PROJECT_NAME}"
+  if [[ "${1}" == "-p" ]]; then
+    shift
+    project_name="${1}"
+    shift
+  fi
+
+  if [[ "${project_name}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
+    _tmux_send "$(_default_project_win ${project_name})" "setrun" $*
+    return $?
+  fi
+
+  # Strip any :win if passed
+  project_name="${project_name%%:*}"
+
+  export PROJECT_DEFAULT_RUN_CMDS="$*"
+}
+
+################################################################################
+# Updates run commands.
+#
+# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+#
+# Updates a single run command within the PROJECT_DEFAULT_RUN_CMDS environment
+# variable.
+#
+# Example:
+#   updaterun foo::foo --someflag=+some-value,-other_value
+#
+# Args:
+#   cmd: Command.
+################################################################################
+function updaterun() {
+  local project_name="${PROJECT_NAME}"
+  if [[ "${1}" == "-p" ]]; then
+    shift
+    project_name="${1}"
+    shift
+  fi
+
+  if [[ "${project_name}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
+    _tmux_send "$(_default_project_win ${project_name})" "updaterun" $*
+    return $?
+  fi
+
+  # Strip any :win if passed
+  project_name="${project_name%%:*}"
+
+  local run_cmd=""
+  # Loop over current run commands looking for things to update
+  local skip=0
+  for token in $(echo ${PROJECT_DEFAULT_RUN_CMDS}); do
+    # If start of a command
+    if [[ "${token}" == *::* ]]; then
+      local skip=0
+      local cmd_name=${token%%::*}
+      # If command passed as arg then update it
+      if [[ "$@" == "${cmd_name}"* ]]; then
+        local cmd=$(_get_run_cmd ${project_name} "$@")
+        if [[ -z "${run_cmd}" ]]; then
+          local run_cmd="${cmd_name}::${cmd}"
+        else
+          local run_cmd="${run_cmd} ${cmd_name}::${cmd}"
+        fi
+        local skip=1
+      fi
+    fi
+    if [[ $skip -eq 0 ]]; then
+      if [[ -z "${run_cmd}" ]]; then
+        local run_cmd="${token}"
+      else
+        local run_cmd="${run_cmd} ${token}"
+      fi
+    fi
+  done
+
+  export PROJECT_DEFAULT_RUN_CMDS="${run_cmd}"
+}
+
+################################################################################
+# Clears run cmd.
+#
+# Clears PROJECT_DEFAULT_RUN_CMDS environment variable.
+#
+# Example:
+#   clearrun
+################################################################################
+function clearrun() {
+  local project_name="${PROJECT_NAME}"
+  if [[ "${1}" == "-p" ]]; then
+    shift
+    project_name="${1}"
+    shift
+  fi
+
+  # Strip any :win if passed
+  project_name="${project_name%%:*}"
+
+  if [[ "${project_name}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
+    _tmux_send "$(_default_project_win ${project_name})" "clearrun" $*
+    return $?
+  fi
+
+  export PROJECT_DEFAULT_RUN_CMDS=""
+}
+
+################################################################################
+# Calculate a new hex for a color given an old color.
+#
+# NOTE:
+#   echo "ibase=16; FF" | bc     # 255 (hex to int)
+#   echo "obase=16; 255" | bc    # FF (int to hex)
+#
+# Examples:
+#   printcolor abeeff 10          # lighten by 10%
+#   printcolor 255 255 255 -20    # darken by 20%
+#
+# Args:
+#   $1{2,3}: color XXXXXX or 0-255 0-255 0-255
+#   $2: percent (default 0%)
+################################################################################
+function printcolor() {
+  local red=0
+  local green=0
+  local blue=0
+  if [[ ${1:0:1} == "#" ]]; then
+    # Match #FFFFFF
+    red=$(echo "ibase=16; $(tr '[:lower:]' '[:upper:]' <<<${1:1:2})" | bc)
+    green=$(echo "ibase=16; $(tr '[:lower:]' '[:upper:]' <<<${1:3:2})" | bc)
+    blue=$(echo "ibase=16; $(tr '[:lower:]' '[:upper:]' <<<${1:5:2})" | bc)
+    shift
+  elif [[ ${1} =~ [0-9a-fA-F]{6} ]]; then
+    # Matches FFFFFF
+    red=$(echo "ibase=16; $(tr '[:lower:]' '[:upper:]' <<<${1:0:2})" | bc)
+    green=$(echo "ibase=16; $(tr '[:lower:]' '[:upper:]' <<<${1:2:2})" | bc)
+    blue=$(echo "ibase=16; $(tr '[:lower:]' '[:upper:]' <<<${1:4:2})" | bc)
+    shift
+  elif [[ ${1} =~ [0-9]+,[0-9]+,[0-9]+ ]]; then
+    # Matches 255,255,255
+    red=$(cut -d',' -f1 <<<${1})
+    green=$(cut -d',' -f2 <<<${1})
+    blue=$(cut -d',' -f3 <<<${1})
+    shift
+  elif [[ ${1} =~ [0-9]+ ]]; then
+    # Matches 255 255 255
+    red=${1}
+    shift
+    if [[ $# -eq 0 || ! ${1} =~ [0-9]+ ]]; then
+      exit 1
+    fi
+    green=${1}
+    shift
+    if [[ $# -eq 0 || ! ${1} =~ [0-9]+ ]]; then
+      exit 1
+    fi
+    blue=${1}
+    shift
+  fi
+
+  local percent=0
+  if [[ $# -gt 0 ]]; then
+    percent=${1}
+  fi
+
+  local adjust=$((multiple * 255 * percent / 100))
+
+  red=$((red + adjust))
+  green=$((green + adjust))
+  blue=$((blue + adjust))
+  local red_hex=$(echo "obase=16; $red" | bc)
+  if [[ "${#red_hex}" -eq 1 ]]; then
+    red_hex="0""${red_hex}"
+  fi
+  local green_hex=$(echo "obase=16; $green" | bc)
+  if [[ "${#green_hex}" -eq 1 ]]; then
+    green_hex="0""${green_hex}"
+  fi
+  local blue_hex=$(echo "obase=16; $blue" | bc)
+  if [[ "${#blue_hex}" -eq 1 ]]; then
+    blue_hex="0""${blue_hex}"
+  fi
+
+  echo "${red_hex}${green_hex}${blue_hex} $red $green $blue"
+}
+
+
+################################################################################
+# Internal Helper Functions
+################################################################################
+
+################################################################################
+# Sends text to tmux window/pane (internal use).
+#
+# If PROXY_CMDS is true (default) then any calls made on non-dev machine will
+# be proxied to the dev machine.
+#
+# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+#
+# Example:
+#   _tmux_send foo:bash ls
+#
+# Args:
+#   $1: Tmux window/pane name (e.g. session:win or session:win.pane)
+#   $*: Text
+################################################################################
+function _tmux_send() {
+  if _is_project_local; then
+    tmux set-buffer "${@:2}$(printf \\r)"
+    tmux paste-buffer -d -t "${1}" &> /dev/null
+  else
+    _ssh_send "_tmux_send $*"
+  fi
+  return $?
+}
+
+################################################################################
+# Sends cmd using ssh to project's host (internal use).
+#
+# If PROXY_CMDS is true (default) then any calls made on non-project host will
+# be proxied to the project host machine.
+#
+# Example:
+#   _ssh_send ls
+#
+# Args:
+#   $*: Command
+################################################################################
+function _ssh_send() {
+  if ! $PROXY_CMDS; then
+    echo "$(tput setaf 1)ERROR: Not running on project host$(tput sgr0)"
+  else
+    echo "$(tput setaf 3)WARNING: Not running on project host$(tput sgr0)"
+    ssh -q -Y ${PROJECT_HOST-DEFAULT_PROJECT_HOST} "$*" 2> /dev/null
+  fi
+  return $?
+}
+
+################################################################################
+# Returns $? == 0 if project is on local machine (internal use).
+#
+# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+################################################################################
+function _is_project_local() {
+  if [[ "${PROJECT_HOST-DEFAULT_PROJECT_HOST}" == $(hostname)* || \
+      "${PROJECT_HOST-DEFAULT_PROJECT_HOST}" == "${HOSTNAME}"* || \
+      "${PROJECT_HOST-DEFAULT_PROJECT_HOST}" == "localhost" ]]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+################################################################################
+# Returns default project name (internal use).
+#
+# The default tmux session is defined in this order:
+#   * The current tmux session name matches a project in ~/.projects
+#   * The first entry in ~/.projects
+#   * "default"
+################################################################################
+function _default_project() {
+  local tmux_session=$(tmux display-message -p '#S' 2> /dev/null)
+  if [[ -n "${tmux_session}" ]]; then
+    if project ls | grep -q "${tmux_session}"; then
+      echo "${tmux_session}"
+      return
+    fi
+  fi
+
+  # head -1 would be easier, but can get broken pipe errors
+  local first=$(read -r line < <(project ls); echo $line)
+  if [[ -n "$first" ]]; then
+    echo "${first}"
+  else
+    echo "default"
+  fi
+}
+
+################################################################################
+# Returns default project tmux window name (internal use).
+#
+# If a project:win pair is passed then it is returned as is otherwise the
+# default project window is looked up and returned along with the project as
+# project:win. The default tmux window is defined by the _default_project and
+# the first entry returned from the $DEFAULT_PROJECT_WINDOWS csv list.
+#
+# Args:
+#   $1: Project name (e.g. tmux session) or project:win pair.
+################################################################################
+function _default_project_win() {
+  local project_name="${1%%:*}"
+  local project_win="${1#:*}"
+  # If no ':' then project_win will be same as project_name
+  if [[ "${project_win}" != "${project_name}" ]]; then
+    echo "${1}"
+  else
+    local project_wins=$(_project_var "${project_name}" "PROJECT_WINDOWS")
+    if [[ -z "${project_wins}" ]]; then
+      project_wins="${DEFAULT_PROJECT_WINDOWS}"
+    fi
+    # %%,* reads everything up to first comma (e.g. first window entry)
+    project_win="${project_wins%%,*}"
+    echo "${project_name}:${project_win}"
+  fi
+}
+
+################################################################################
+# Returns $? == 0 if project exists (internal use).
+#
+# Args:
+#   $1: Project name.
+################################################################################
+function _project_exists() {
+  shopt -q nocasematch
+  local orig_nocasematch=$?
+  shopt -s nocasematch
+
+  while read line; do
+    if [[ "${line}" == "PROJECT_NAME"* && "${line:13}" == "${1}" ]]; then
+      if [[ $orig_nocasematch -eq 1 ]]; then shopt -u nocasematch; fi
+      return 0
+    fi
+  done < ~/.projects
+
+  if [[ $orig_nocasematch -eq 1 ]]; then shopt -u nocasematch; fi
+  return 1
+}
+
+################################################################################
+# Project ls command (internal use - see project).
+################################################################################
+function _project_ls() {
+  while read line; do
+    if [[ "${line}" == "PROJECT_NAME"* ]]; then
+      echo "${line:13}"
+    fi
+  done < ~/.projects
+}
+
+################################################################################
+# Returns list of project vars (A=B C=D ...) (internal use)
+#
+# Args:
+#   $1: Project name (e.g. tmux session)
+#   $* (optional): Space separated list of names of vars to return
+################################################################################
+function _project_vars() {
+  local project_name="${1}"
+  local found=0
+  local vars=()
+
+  # Reset the defaults (these will be overridden if values are configured in
+  # ~/.projects for this project, otherwise these defaults will take effect)
+  vars+=("PROJECT_HOST=${DEFAULT_PROJECT_HOST}")
+  vars+=("PROJECT_WINDOWS=${DEFAULT_PROJECT_WINDOWS}")
+  vars+=("PROJECT_TARGETS_IGNORE=${DEFAULT_PROJECT_TARGETS_IGNORE}")
+  vars+=("PROJECT_SHARE_DIR=${DEFAULT_PROJECT_SHARE_DIR}/${project_name}")
+  vars+=("PROJECT_BACKUP_DIR=${DEFAULT_PROJECT_BACKUP_DIR}/${project_name}")
+  vars+=("PROJECT_SYNC_LIST=${DEFAULT_PROJECT_SYNC_LIST}")
+  vars+=("PROJECT_SYNC_DESTS=${DEFAULT_PROJECT_SYNC_DESTS}")
+  if [[ -n "${DEFAULT_PROJECT_SEARCH_FN}" ]]; then
+    vars+=("PROJECT_SEARCH_FN=${DEFAULT_PROJECT_SEARCH_FN}")
+  fi
+  if [[ -n "${DEFAULT_PROJECT_BUILD_FN}" ]]; then
+    vars+=("PROJECT_BUILD_FN=${DEFAULT_PROJECT_BUILD_FN}")
+  fi
+  if [[ -n "${DEFAULT_PROJECT_LINT_FN}" ]]; then
+    vars+=("PROJECT_LINT_FN=${DEFAULT_PROJECT_LINT_FN}")
+  fi
+  if [[ -n "${DEFAULT_PROJECT_FORMAT_FN}" ]]; then
+    vars+=("PROJECT_FORMAT_FN=${DEFAULT_PROJECT_FORMAT_FN}")
+  fi
+  if [[ -n "${DEFAULT_PROJECT_TEST_FN}" ]]; then
+    vars+=("PROJECT_TEST_FN=${DEFAULT_PROJECT_TEST_FN}")
+  fi
+  if [[ -n "${DEFAULT_PROJECT_COVERAGE_FN}" ]]; then
+    vars+=("PROJECT_COVERAGE_FN=${DEFAULT_PROJECT_COVERAGE_FN}")
+  fi
+  if [[ -n "${DEFAULT_PROJECT_GETERRORS_FN}" ]]; then
+    vars+=("PROJECT_GETERRORS_FN=${DEFAULT_PROJECT_GETERRORS_FN}")
+  fi
+  if [[ -n "${DEFAULT_PROJECT_GETURL_FN}" ]]; then
+    vars+=("PROJECT_GETURL_FN=${DEFAULT_PROJECT_GETURL_FN}")
+  fi
+  if [[ -n "${DEFAULT_PROJECT_SANITY_FN}" ]]; then
+    vars+=("PROJECT_SANITY_FN=${DEFAULT_PROJECT_SANITY_FN}")
+  fi
+
+  while read line; do
+    if [[ "${line}" == "PROJECT_NAME=${project_name}" ]]; then
+      local found=1
+    elif [[ ${found} -eq 1 && "${line}" == "PROJECT_NAME="* ]]; then
+      break
+    fi
+    if [[ ${found} -eq 1 && ! "${line}" == "#"* && ! "${line}" == "" ]] && \
+        [[ "${line}" != alias* ]] && \
+        [[ "${2}" == "" || ${2} =~ "${line%%=*}" ]]; then
+      vars+=(${line})
+    fi
+  done < ~/.projects
+  echo "${vars[@]}"
+}
+
+################################################################################
+# Returns a specific project vars value (internal use)
+#
+# Args:
+#   $1: Project name (e.g. tmux session)
+#   $2: Project var name
+################################################################################
+function _project_var() {
+  local project_name="${1}"
+  local var_name="${2}"
+  # All project vars are passed prior to request specific var so that we can
+  # fully resolve vars made up of other vars
+  local project_vars=$(_project_vars "${project_name}")
+  val=$(eval "${project_vars} eval echo '$""${var_name}""'")
+  echo "${val}"
+}
+
+################################################################################
+# Project settings command (internal use - see project).
+#
+# Args:
+#   $1: Project name (e.g. tmux session)
+################################################################################
+function _project_settings() {
+  local project_name="${1}"
+  local found=0
+  local padding="                             "
+  local project_vars=$(_project_vars ${project_name})
+  local vars_echoed=()
+  while read line; do
+    if [[ "${line}" == "PROJECT_NAME=${project_name}" ]]; then
+      local found=1
+    elif [[ ${found} -eq 1 && "${line}" == "PROJECT_NAME="* ]]; then
+      break
+    fi
+    if [[ ${found} -eq 1 && ! ${line} == "#"* && ! "${line}" == "" ]]; then
+      local var="${line%%=*}"
+      local val="${line#*=}"
+      # Note: the ${project_vars} variable stores a space separated list of
+      #   var=value env settings for the chosen project. By passing this
+      #   list prior to calling echo we can resolve variables defined in
+      #   terms of other variables on a project specific basis (e.g. without
+      #   altering the current projects settings). However, we need to do a
+      #   double eval and put the expand of value of $val in single quotes or
+      #   else the current project values will override.
+      if [[ ${val} == *"$"* && ! ${var} == alias* ]]; then
+        val=$(eval "${project_vars} eval echo '""${val}""'")
+      fi
+      echo "${var}${padding:${#var}} : ${val}"
+      vars_echoed+=("${var}")
+    fi
+  done < ~/.projects
+
+  # Add missing defaults (only important ones...)
+  local defaults=("PROJECT_HOST" "PROJECT_WINDOWS")
+  for def in "${defaults[@]}"; do
+    found=0
+    for var in "${vars_echoed[@]}"; do
+      if [[ "${def}" == "${var}" ]]; then
+        found=1
+        break
+      fi
+    done
+    if [[ ${found} -eq 0 ]]; then
+      local val_name='$DEFAULT_'"${def}"
+      local val=$(eval "echo $val_name")
+      echo "${def}${padding:${#def}} : ${val}"
+    fi
+  done
+}
+
+################################################################################
+# Project init (internal use - see project).
+#
+# Args:
+#   $1: Project name (e.g. tmux session)
+################################################################################
+function _project_init() {
+  local project_name="${1}"
+
+  # Reset the defaults (these will be overridden if values are configured in
+  # ~/.projects for this project, otherwise these defaults will take effect)
+  eval "export PROJECT_HOST=${DEFAULT_PROJECT_HOST}"
+  eval "export PROJECT_WINDOWS=${DEFAULT_PROJECT_WINDOWS}"
+  eval "export PROJECT_TARGETS_IGNORE=${DEFAULT_PROJECT_TARGETS_IGNORE}"
+  eval "export PROJECT_SHARE_DIR=${DEFAULT_PROJECT_SHARE_DIR}/${project_name}"
+  eval "export PROJECT_BACKUP_DIR=${DEFAULT_PROJECT_BACKUP_DIR}/${project_name}"
+  eval "export PROJECT_SYNC_LIST=${DEFAULT_PROJECT_SYNC_LIST}"
+  eval "export PROJECT_SYNC_DESTS=${DEFAULT_PROJECT_SYNC_DESTS}"
+  if [[ -n "${DEFAULT_PROJECT_SEARCH_FN}" ]]; then
+    eval "export PROJECT_SEARCH_FN=${DEFAULT_PROJECT_SEARCH_FN}"
+  fi
+  if [[ -n "${DEFAULT_PROJECT_FORMAT_FN}" ]]; then
+    eval "export PROJECT_FORMAT_FN=${DEFAULT_PROJECT_FORMAT_FN}"
+  fi
+  if [[ -n "${DEFAULT_PROJECT_LINT_FN}" ]]; then
+    eval "export PROJECT_LINT_FN=${DEFAULT_PROJECT_LINT_FN}"
+  fi
+  if [[ -n "${DEFAULT_PROJECT_BUILD_FN}" ]]; then
+    eval "export PROJECT_BUILD_FN=${DEFAULT_PROJECT_BUILD_FN}"
+  fi
+  if [[ -n "${DEFAULT_PROJECT_TEST_FN}" ]]; then
+    eval "export PROJECT_TEST_FN=${DEFAULT_PROJECT_TEST_FN}"
+  fi
+  if [[ -n "${DEFAULT_PROJECT_COVERAGE_FN}" ]]; then
+    eval "export PROJECT_COVERAGE_FN=${DEFAULT_PROJECT_COVERAGE_FN}"
+  fi
+  if [[ -n "${DEFAULT_PROJECT_GETERRORS_FN}" ]]; then
+    eval "export PROJECT_GETERRORS_FN=${DEFAULT_PROJECT_GETERRORS_FN}"
+  fi
+  if [[ -n "${DEFAULT_PROJECT_GETURL_FN}" ]]; then
+    eval "export PROJECT_GETURL_FN=${DEFAULT_PROJECT_GETURL_FN}"
+  fi
+  if [[ -n "${DEFAULT_PROJECT_SANITY_FN}" ]]; then
+    eval "export PROJECT_SANITY_FN=${DEFAULT_PROJECT_SANITY_FN}"
+  fi
+
+  local found=0
+  while read line; do
+    if [[ "${line}" == "PROJECT_NAME=${project_name}" ]]; then
+      local found=1
+    elif [[ ${found} -eq 1 && "${line}" == "PROJECT_NAME="* ]]; then
+      break
+    fi
+    if [[ ${found} -eq 1 ]]; then
+      if [[ "${line}" == alias* ]]; then
+        # 'alias foo=bar' entries
+        eval "${line}" &> /dev/null
+      else
+        # variable definitions
+        eval "export ${line}" &> /dev/null
+      fi
+    fi
+  done < ~/.projects
+}
+
+################################################################################
+# Attach/switch to local or remote project's tmux session (internal use).
+#
+# REQUIREMENTS: local and remote files to sync.
+#
+# By default the first session is created under the project name. Since it is
+# desirable to support connecting more than one terminal to the same project
+# session, an optional session instance may be provided that will create a new
+# grouped session under the name <project>_<instance>.
+#
+# NOTE: By default sessions will try to attach to windows at the corresponding
+#   (1-based) offset in PROJECT_WINDOWS (handled when projectrc sourced).
+#
+# For example, if project 'foo' has PROJECT_WINDOWS=bash,vim then:
+#
+#   project foo     # creates 'foo' session, opens win 'bash'
+#   project foo 2   # creates 'foo_2' grouped session to 'foo', opens win 'vim'
+#
+# Args:
+#   $1: Project name (e.g. main tmux session name)
+#   $2 (optional): Session instance (e.g. group session number)
+################################################################################
+function _project_attach() {
+  local project_name="${1}"
+  local instance_suffix=""
+  if [[ -n "${2}" && ${2} -ne 1 ]]; then
+    instance_suffix="_${2}"
+  fi
+  local session="${project_name}${instance_suffix}"
+
+  # Get current session
+  local cur_session=$(tmux display-message -p '#S' 2> /dev/null)
+
+  if [[ "${session}" == "${cur_session}" ]]; then
+    # Already in proper session, do nothing except reload vars
+    _project_init "${project_name}"
+    return 0
+  fi
+
+  if tmux list-sessions 2> /dev/null | grep -q "${session}:"; then
+    # Session we are attaching to exists, just switch
+    local cmd="tmux switch -t ${session} &> /dev/null"
+  else
+
+    # Commands to create a new session
+    local project_windows="${PROJECT_WINDOWS}"
+    # Pass empty TMUX env var to keep tmux happy when creating from within tmux
+    local new_session="\
+        TMUX= tmux new -d -s ${project_name} -n ${project_windows%%,*} \
+        &> /dev/null"
+    # Create windows listed in PROJECT_WINDOWS env var
+    OLDIFS=$IFS
+    IFS=,
+    for win in ${project_windows#*,}; do
+      new_session="\
+          ${new_session} && tmux new-window -t ${project_name} -d -n ${win} \
+          &> /dev/null"
+    done
+    IFS=$OLDIFS
+
+    # Commands to attach to default project session
+    local attach_session="tmux attach -t ${session} &> /dev/null"
+    if [[ -n "${instance_suffix}" ]]; then
+      # Instance given so session group used. If fail to attach to a session
+      # group then create a new session group based on project session.
+      #
+      # NOTE: To handle case where the project session may not have been created
+      # yet (e.g. 'project attach foo 2' was used before 'project attach foo')
+      # we will always try to create a new project session  before attempting to
+      # create a session group. If the project session already exists we just
+      # throw out the error and move on to session group creation.
+      local attach_session="${attach_session} || \
+          { { ${new_session}; }; \
+          TMUX= tmux new -t ${project_name} -s ${session} &> /dev/null; }"
+    fi
+
+    # Commands to attach/switch to new session
+    local attach_new_session="tmux attach -t ${project_name} &> /dev/null"
+    if _is_project_local && [[ -n "${cur_session}" ]]; then
+      attach_new_session="tmux switch -t ${project_name} &> /dev/null"
+    fi
+
+    # Attach to session or create a new session
+    local cmd="${attach_session} || \
+        { ${new_session} && ${attach_new_session}; }"
+  fi
+
+  if _is_project_local; then
+    eval "$cmd"
+  else
+    ssh -Y -t ${PROJECT_HOST-DEFAULT_PROJECT_HOST} "${cmd}"
+  fi
+}
+
+################################################################################
+# Backs up project files.
+#
+# Files are backed up to PROJECT_BACKUP_DIR/<timestamp>
+#
+# Args:
+#   $1: Project name (e.g. tmux session)
+################################################################################
+function _project_backup() {
+  local project_name="${1}"
+
+  local project_host=$(_project_var "${project_name}" "PROJECT_HOST")
+  if [[ -z "${project_host}" ]]; then
+    project_host="${DEFAULT_PROJECT_HOST}"
+  fi
+
+  local backup_dir=$(_project_var "${project_name}" "PROJECT_BACKUP_DIR")
+  if [[ -z "${backup_dir}" ]]; then
+    backup_dir="${DEFAULT_PROJECT_BACKUP_DIR}/${project_name}"
+  fi
+
+  # This assumes the git repo is rooted at the PROJECT_BUILD_DIR
+  local project_build_dir=$(\
+      _project_var "${project_name}" "PROJECT_BUILD_DIR")
+  if [[ -z "${project_build_dir}" ]]; then
+    echo "$(tput setaf 1)PROJECT_BUILD_DIR must be configured$(tput sgr0)"
+    return 1
+  fi
+
+  local pushd_cmd="pushd ${project_build_dir} &> /dev/null"
+  local git_cmd='$(git ls-files -m -o --directory'
+  git_cmd="$git_cmd --no-empty-directory --exclude-standard 2> /dev/null)"
+  local files_cmd="files=${git_cmd}"
+  local time_cmd='cur_time=$(date +"%FT%T")'
+  local mkdir_cmd="mkdir -p ${backup_dir}/"'${cur_time}'
+  local cp_cmd='for f in ${files}; do'
+  cp_cmd="${cp_cmd} mkdir -p ${backup_dir}/"'${cur_time}/${f%/*}'
+  cp_cmd="${cp_cmd}; "'f=${f%/}'
+  cp_cmd="${cp_cmd}; cp -r ${project_build_dir}/"'${f} '
+  cp_cmd="${cp_cmd}""${backup_dir}/"'${cur_time}/${f%/*}; done'
+  local cmd="$pushd_cmd && { $files_cmd && $time_cmd && $mkdir_cmd && $cp_cmd; }"
+  local cmd="${cmd}; popd &> /dev/null"
+
+  if _is_project_local; then
+    eval "$cmd"
+  else
+    PROJECT_HOST=${project_host} _ssh_send $cmd 2> /dev/null
+  fi
+}
+
+################################################################################
+# Syncs local and remote project files (internal use).
+#
+# Args:
+#   $1: Project name (e.g. tmux session)
+################################################################################
+function _project_sync() {
+  local project_name="${1}"
+
+  local project_host=$(_project_var "${project_name}" "PROJECT_HOST")
+  if [[ _is_project_local || -z "${project_host}" ]]; then
+    project_host="${DEFAULT_PROJECT_HOST}"
+  fi
+
+  local project_sync_dests=$(\
+      _project_var "${project_name}" "PROJECT_SYNC_DESTS")
+  if [[ -z "${project_sync_dests}" ]]; then
+    project_sync_dests="${DEFAULT_PROJECT_SYNC_DESTS}"
+  fi
+
+  local project_sync_list=$(\
+      _project_var "${project_name}" "PROJECT_SYNC_LIST")
+  if [[ -z "${project_sync_list}" ]]; then
+    project_sync_list="${DEFAULT_PROJECT_SYNC_LIST}"
+  fi
+
+  local first_dir=${project_sync_dests%%,*}
+  OLDIFS=$IFS
+  IFS=$','
+  for dir in ${project_sync_dests}; do
+    rsync -ravz --files-from=${project_sync_list} \
+      --exclude="tags" --exclude="tags-ja" ~ -e ssh ${project_host}:${dir}
+  done
+  IFS=$OLDIFS
+
+  return 0
+}
+
+################################################################################
+# Helper function to search for list of target names within a project.
+#
+# Example (assuming current dir is ${PROJECT_SRC_HOME}/start/here):
+#   INPUT: foo ../bar ../baz:all :target
+#   OUTPUT: start/here/foo start/bar start/baz:all start/here:target
+#
+# Args:
+#   $*: Named targets to search for relative to current dir.
+#
+# Returns:
+#   List of targets with dirs relative to ${PROJECT_SRC_DIR} or
+#   ${PROJECT_TEST_DIR}
+################################################################################
+function _find_targets() {
+  base_dir="${PROJECT_SRC_DIR}"
+  if [[ "${PWD}" == "${PROJECT_TEST_DIR}"* ]]; then
+    base_dir="${PROJECT_TEST_DIR}"
+  fi
+
+  local matches=()
+  for arg in $*; do
+    local target="${arg}"
+    if [[ "${arg}" != "${base_dir}"* ]]; then
+      # Relative path may be used, need to find real path
+      local fullpath="${PWD}/${arg}"
+      local parent_dir="${fullpath%/*}"
+      local suffix="${arg##*/}"
+      if [[ "${suffix}" == "." || "${suffix}" == ".." ]]; then
+        local parent_dir="${parent_dir}/${suffix}"
+        local suffix=""
+      fi
+      local realpath=$(_normalize_path "${parent_dir}")
+      if [[ ${suffix} == ":"* ]]; then
+        target="${realpath}${suffix}"
+      else
+        target="${realpath}/${suffix}"
+      fi
+    fi
+    if [[ "${target}" == "${base_dir}/" ]]; then
+      matches+=(".")
+    else
+      match="${target:${#base_dir} + 1}"
+      # Skip matches that should be ignored
+      if ! _is_target_ignored "${match}"; then
+        matches+=("${match}")
+      fi
+    fi
+  done
+
+  echo "${matches[*]}"
+}
+
+################################################################################
+# Helper function to recursively expand directories within targets.
+#
+# Any trailing ... or ** indicators to target recusive directories will be
+# removed.
+#
+# Example (assuming a/b with subdirs c and d and e with subdir f):
+#   INPUT: a/b x.txt e/**
+#   OUTPUT: a/b/c a/b/d x.txt e/f
+#
+# Args:
+#   $1: Extension to add after dir expansion (e.g. foo/** -> foo/*.py)
+#       NOTE: Use "/" to convert foo/** to foo/
+#   $*: Named targets to search for relative to base src/test dir.
+#
+# Returns:
+#   List of targets with dirs relative to ${PROJECT_DIR},
+#     ${PROJECT_SRC_DIR}, or ${PROJECT_TEST_DIR}
+################################################################################
+function _expand_targets() {
+  local base_dir="${PROJECT_SRC_DIR}"
+  if [[ "${PWD}" == "${PROJECT_TEST_DIR}"* ]]; then
+    base_dir="${PROJECT_TEST_DIR}"
+  fi
+
+  local ext=${1}
+  shift
+
+  local expanded=()
+  for target in "$@"; do
+    target=${target//.../}  # remove ... recursive indicator
+    if [[ -d "${base_dir}/${target}" ]]; then
+      for dir in $(find ${base_dir}/${target} -type d); do
+        local dir=${dir##${base_dir}/}
+        if [[ -z "${dir}" && "${ext}" == "/" ]]; then
+          local normalized_target=$(_normalize_path "${base_dir}/${dir}")
+        else
+          local normalized_target=$(_normalize_path "${base_dir}/${dir}${ext}")
+        fi
+        # Skip matches that should be ignored
+        if ! _is_target_ignored "${normalized_target}"; then
+          expanded+=("${normalized_target:${#base_dir} + 1}")
+        fi
+      done
+    else
+      # Simplify the target names to remove ../ paths
+      local normalized_target=$(_normalize_path "${base_dir}/${target}")
+      # Skip matches that should be ignored
+      if ! _is_target_ignored "${normalized_target}"; then
+        expanded+=("${normalized_target:${#base_dir} + 1}")
+      fi
+    fi
+  done
+
+  echo "${expanded[*]}"
+}
+
+################################################################################
+# Helper to check if target ignored.
+#
+# Args:
+#   $1: Target
+#
+# Returns:
+#   0 ignored, 1 not ignored
+################################################################################
+function _is_target_ignored() {
+  ignored=1
+  OLDIFS=$IFS
+  IFS=$','
+  for ignore in $(echo "${PROJECT_TARGETS_IGNORE}"); do
+    if [[ "${1}" == *"${ignore}"* ]]; then
+      ignored=0
+      break
+    fi
+  done
+  IFS=$OLDIFS
+  return $ignored
+}
+
+################################################################################
+# Helper function to simplify paths.
+#
+# Example:
+#   INPUT: a/b/c/../d
+#   OUTPUT: a/b/d
+#
+# Args:
+#   $1: Full target path.
+#
+# Returns:
+#   Normalized path.
+################################################################################
+function _normalize_path() {
+  # TODO(mdreves): Replace with non-python implementation
+  target=$( \
+      python -c "import os,sys; print os.path.realpath(sys.argv[1])" "${1}")
+  if [[ $? -eq 0 ]]; then
+    echo "${target}"
+  else
+    echo "${1}"
+  fi
+}
+
+################################################################################
+# Helper function to create run command from the default run command and flags.
+#
+# Requires the PROJECT_DEFAULT_RUN_CMDS env var be set.
+#
+# Example:
+#   # PRODUCT_DEFAULT_RUN_CMDS=test1::test1 --foo=a, --bar=b test2::test2 --bat=c
+#   # Add 'd' and 'e' to --foo flag for 'test1'
+#   INPUT: test1 --foo=+d,+e
+#   OUTPUT: test1 --foo=a,d,e ==bar=b
+#
+# Args:
+#   project: Name of project to get run command for
+#   cmd: Name of an embedded run command with PROJECT_DEFAULT_RUN_CMDS
+#   flags*: Modifications to default flags
+#
+# Returns:
+#   Full form of embedded run command after flag changes.
+################################################################################
+function _get_run_cmd() {
+  if [[ "${1}" != "${PROJECT_NAME}" ]]; then
+    local run_cmd=$(_project_var "${1}" "PROJECT_DEFAULT_RUN_CMDS")
+  else
+    local run_cmd=${PROJECT_DEFAULT_RUN_CMDS}
+  fi
+  shift
+  if [[ $# -gt 0 ]]; then
+    # Search for tag (e.g. foo in "foo::foo --flags bar::bar --flags")
+    if [[ "${run_cmd}" =~ "${1}::" ]]; then
+      # Strip everything up to including foo::
+      run_cmd=${run_cmd#*${1}::}
+      if [[ "${run_cmd}" =~ "::" ]]; then
+        # Strip from first remaining :: to end
+        run_cmd=${run_cmd%%::*}
+        # Strip last word (e.g. bar from bar:: will be remaining)
+        run_cmd=${run_cmd% [^ ]*}
+      fi
+      shift
+    fi
+  elif [[ "${run_cmd}" =~ "::" ]]; then
+    # Multiple entries, choose first (same as above algorithm, only no label)
+    run_cmd=${run_cmd#*::}
+    if [[ "${run_cmd}" =~ "::" ]]; then
+      run_cmd=${run_cmd%%::*}
+      run_cmd=${run_cmd% [^ ]*}
+    fi
+  fi
+
+  # Check if additional args passed requiring flag addition/replacement
+  if [[ $# -gt 0 ]]; then
+    local flag=""
+    local old_value=""
+    local new_value=""
+    local flag_value=""
+    local flag_prefix=""  # prefix to add to flag (e.g. --, --no, etc)
+    local prefix=""       # prefix before flag
+    local suffix=""       # suffix after flag
+    local tmp=""
+    local curIFS=$IFS
+    IFS=' '
+    for arg in $*; do
+      new_value=""
+      flag_prefix=""
+      # find flag name (if used)
+      if [[ "${arg}" =~ = ]]; then        # --foo=bar
+        flag=${arg%%=*}   # --foo or -foo
+        if [[ "${flag}" == --* ]]; then   # --foo
+          flag=${flag:2}  # foo
+          flag_prefix="--"
+        else                              # -foo
+          flag=${flag:1}  # foo
+          flag_prefix="-"
+        fi
+        new_value=${arg#*=}      # bar
+      elif [[ "${arg}" == --no* ]]; then  # --nofoo
+        flag=${arg:4}     # foo
+        flag_prefix="--no"
+      elif [[ "${arg}" == -no* ]]; then   # -nofoo
+        flag=${arg:3}     # foo
+        flag_prefix="-no"
+      elif [[ "${arg}" == --* ]]; then    # --foo
+        flag=${arg:2}     # foo
+        flag_prefix="--"
+      elif [[ "${arg}" == -* ]]; then     # -foo
+        flag=${arg:1}     # foo
+        flag_prefix="-"
+      else                                # foo (e.g. not a flag)
+        flag=${arg}       # foo
+        flag_prefix=""
+      fi
+
+      # find flag in current run_cmd and splice around it
+      #    run_cmd  : 'mycmd --f1 --f2=a --f3=b'
+      #    flag     : 'f2'
+      #
+      #    prefix   : 'mycmd --f1 '
+      #    old_value : 'a'
+      #    suffix   : ' --f3=b'
+      old_value=""
+      if [[ "${run_cmd}" =~ "--no${flag}" ]]; then
+        suffix=${run_cmd#*--no${flag}}   # Strip up to including --noflag
+        prefix=${run_cmd:0:${#run_cmd}-${#suffix}-4-${#flag}}  # -4 for --no
+      elif [[ "${run_cmd}" =~ "-no${flag}" ]]; then
+        suffix=${run_cmd#*-no${flag}}    # Strip up to including -noflag
+        prefix=${run_cmd:0:${#run_cmd}-${#suffix}-3-${#flag}}  # -3 for -no
+      elif [[ "${run_cmd}" =~ "--${flag}=" ]]; then
+        suffix=${run_cmd#*--${flag}=}    # Strip up to including --flag=
+        prefix=${run_cmd:0:${#run_cmd}-${#suffix}-3-${#flag}}  # -3 for --,=
+        old_value=${suffix%% *}   # Strip up to first space
+        suffix=${suffix:${#old_value}}
+      elif [[ "${run_cmd}" =~ "-${flag}=" ]]; then
+        suffix=${run_cmd#*-${flag}=}     # Strip up to including -flag=
+        prefix=${run_cmd:0:${#run_cmd}-${#suffix}-2-${#flag}}  # -2 for -,=
+        old_value=${suffix%% *}   # Strip up to first space
+        suffix=${suffix:${#old_value}}
+      elif [[ "${run_cmd}" =~ "--${flag}" ]]; then
+        suffix=${run_cmd#*--${flag}}     # Strip up to including --flag
+        prefix=${run_cmd:0:${#run_cmd}-${#suffix}-2-${#flag}}  # -2 for --
+      elif [[ "${run_cmd}" =~ "-${flag}" ]]; then
+        suffix=${run_cmd#*-${flag}}      # Strip up to including -flag
+        prefix=${run_cmd:0:${#run_cmd}-${#suffix}-1-${#flag}}  # -1 for -
+      else
+        prefix=$run_cmd
+        # new flag or new arg, add space before prefix
+        flag_prefix=" ${flag_prefix}"
+      fi
+
+      IFS=','
+      for v in $new_value; do
+        if [[ "$v" == +* ]]; then
+          v=${v:1}
+          # --foo=+bar (or -foo=+bar) means add bar to existing foo flag values
+          if [[ ! "${old_value}" =~ $v ]]; then
+            old_value="${old_value},${v}"
+            new_value=${old_value}
+          fi
+        elif [[ "$v" == -* ]]; then
+          v=${v:1}
+          # --foo=-bar (or -foo=-bar) means remove bar from existing flag values
+          if [[ "${old_value}" =~ ,$v ]]; then
+            tmp=${old_value#*,$v}
+            tmp=${old_value:0:${#old_value}-${#tmp}-1-${#v}}$tmp
+            old_value=$tmp
+            new_value=$tmp
+          elif [[ "${old_value}" =~ $v, ]]; then
+            tmp=${old_value#*$v,}
+            tmp=${old_value:0:${#old_value}-${#tmp}-1-${#v}}$tmp
+            old_value=$tmp
+            new_value=$tmp
+          elif [[ "${old_value}" == "${v}" ]]; then  # removed flag altogether
+            flag_prefix=""
+            flag=""
+            new_value=""
+          fi
+        else
+          # --foo=bar (or -foo=bar) means replace existing foo flag with bar
+          $old_value=$new_value
+        fi
+      done
+      IFS=' '
+
+      if [[ -n "${new_value}" ]]; then
+        run_cmd="${prefix}${flag_prefix}${flag}=${new_value}${suffix}"
+      else
+        run_cmd="${prefix}${flag_prefix}${flag}${new_value}${suffix}"
+      fi
+    done
+    IFS=$curIFS
+  fi
+  echo "${run_cmd}"
+}
+
+
+################################################################################
+# Help
+################################################################################
+
+function _print_project_aliases() {
+  echo "CONNECT   : sshproj sftpproj"
+  echo "DIRS      : cdsrc cdcommon cdtest cdbuild cdrun cdproject"
+  echo "URLS      : openbuild opentest opencoverage"
+}
+
+function _print_project_commands() {
+  echo "project                               - display current project"
+  echo "project ls                            - list projects"
+  echo "project <name>                        - if attached switch, else load"
+  echo "project attach/detach/kill [<name>]   - attach/detach/kill tmux"
+  echo "project sessions                      - list attached sessions"
+  echo "project settings [<name>]             - show project settings"
+  echo "project backup [<name>]               - backup files not in git repo"
+  echo "project sync [<name>]                 - sync local files to project"
+  echo "project companion [<name>]            - show session group companion"
+  echo "win [new] [<name>]                    - display/create tmux win"
+  echo "pane [new|split|vsplit] [<name>]      - display/create tmux pane"
+  echo "search [-p <proj...>] <tags>          - searches code for tags"
+  echo "format [-p <proj...>] [<target>]      - formats target"
+  echo "lint [-p <proj...>] [<target>]        - lints target"
+  echo "build [-p <proj...>] [<target>|clean] - builds target"
+  echo "test [-p <proj...>] [<target>]        - runs test target"
+  echo "coverage [-p <proj...>] [<target>]    - runs code coverage"
+  echo "run [-p <proj...>] [<prog>]           - runs program"
+  echo "share [-p <proj...>] <prog>           - copy program to ~/Public, etc"
+  echo "sanity [-p <proj...>]                 - runs project sanity check"
+  echo "geterrors [-p <proj...>] [build|...]  - gets errors of prev build, ..."
+  echo "geturl [-p <proj...>] [review|bug|..] - gets url for review, bug, ..."
+  echo "gettest                               - displays default test targets"
+  echo "settest [-p <proj...>] <targets>      - replace default test targets"
+  echo "updatetest [-p <proj...>] [+/-]<tgts> - add/remove default test targets"
+  echo "cleartest [-p <proj...>]              - clears default tests"
+  echo "getrun [-p <proj...>] <label>         - gets cur default for run cmd"
+  echo "setrun [-p <proj...>] <cmds>          - set default run cmds"
+  echo "updaterun [-p <proj...>] <lbl> <flgs> - updates settings for a run cmd"
+  echo "clearrun [-p <proj...>]               - clears run cmd"
+}
+
+function _print_extra_commands() {
+  echo "printcolor <rgb|hex> [<percent>]      - print color"
+}
+
+
+################################################################################
+# Init
+################################################################################
+
+# If a tmux session exists it should have same name as project, so just call
+# 'project <session_name>' to setup the default project enviroment vars
+project $(tmux display-message -p "#S" 2> /dev/null) &> /dev/null
+
+# If project still not set, then no sessions setup, use default project
+[[ -z "${PROJECT_NAME}" ]] && project $(_default_project)
+
+# Change to default window for session (e.g. foo_2 => 2)
+win $(tmux display-message -p "#S" 2> /dev/null) &> /dev/null
