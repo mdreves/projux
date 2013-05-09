@@ -31,30 +31,31 @@ Installation is straight forward:
 
 4. If managing remote projects, setup remote hosts
 
-This can either be done using `project sync` or manually.  In either case, make
-sure to set the `PROJECT_HOST` vars. Alternatively, a `DEFAULT_PROJECT_HOST` can
-be set in `~/.bashrc` if all the projects run on the same server.
+    This can either be done using `project sync` or manually.  In either case,
+    make sure to set the `PROJECT_HOST` vars. Alternatively, a
+    `DEFAULT_PROJECT_HOST` can be set in `~/.bashrc` if all the projects run on
+    the same server.
 
-If setting up manually, copy the `.projectrc` and `~/.projects` files to the
-remote host(s) and setup the remote `~/.bashrc file`.
+    If setting up manually, copy the `.projectrc` and `~/.projects` files to the
+    remote host(s) and setup the remote `~/.bashrc file`.
 
-If using `project sync`, for each `PROJECT_HOST` that was set, set the
-corresponding `PROJECT_SYNC_LIST` to a list of what will be synchronized to
-the remote host. If `DEFAULT_PROJECT_HOST` is used, then set the
-`DEFAULT_PROJECT_SYNC_LIST`.  The sync list should at least include the
-`~/.projects` file. If you are like me and have a shared `.bashrc` file used
-between a Mac laptop and a linux desktop server, then you can add `.bashrc` and
-`.projectrc` to the sync list. If not, you will need to manually copy the
-`.projectrc` and setup the remote `.bashrc` to source it.  Lastely, synchronize
-the local and remote hosts:
+    If using `project sync`, for each `PROJECT_HOST` that was set, set the
+    corresponding `PROJECT_SYNC_LIST` to a list of what will be synchronized to
+    the remote host. If `DEFAULT_PROJECT_HOST` is used, then set the
+    `DEFAULT_PROJECT_SYNC_LIST`.  The sync list should at least include the
+    `~/.projects` file. If you are like me and have a shared `.bashrc` file used
+    between a Mac laptop and a linux desktop server, then you can add `.bashrc`
+    and `.projectrc` to the sync list. If not, you will need to manually copy
+    the `.projectrc` and setup the remote `.bashrc` to source it.  Lastely,
+    synchronize the local and remote hosts:
 
-If separate PROJECT_HOST and PROJECT_SYNC_LIST settings:
+    If separate PROJECT_HOST and PROJECT_SYNC_LIST settings:
 
-    $ project sync <project_name>
+        $ project sync <project_name>
 
-If using DEFAULT_PROJECT_HOST and DEFAULT_PROJECT_SYNC_LIST settings:
+    If using DEFAULT_PROJECT_HOST and DEFAULT_PROJECT_SYNC_LIST settings:
 
-    $ project sync
+        $ project sync
 
 # Quickstart
 
@@ -74,9 +75,9 @@ A basic workflow might be as follows:
           PROJECT_NAME=bar
           ...
 
-NOTE: All environment vars and aliases from the project matching `PROJECT_NAME`
-up to the next `PROJECT_NAME` entry will be loaded whenever the
-`project <project_name>` command is used.
+    NOTE: All environment vars and aliases from the project matching
+    `PROJECT_NAME` up to the next `PROJECT_NAME` entry will be loaded whenever
+    the `project <project_name>` command is used.
 
 * Setup project sync list and synchronize local/remote hosts
 
@@ -91,8 +92,8 @@ up to the next `PROJECT_NAME` entry will be loaded whenever the
 
         $ project attach foo
 
-NOTE: By default this will attach to the first TMUX window listed in
-`DEFAULT_PROJECT_WINDOWS` with a TMUX session named after the project.
+    NOTE: By default this will attach to the first TMUX window listed in
+    `DEFAULT_PROJECT_WINDOWS` with a TMUX session named after the project.
 
 * Hack in vim, etc
 
@@ -100,9 +101,9 @@ NOTE: By default this will attach to the first TMUX window listed in
 
         $ project attach foo 2
 
-NOTE: By default this will attach to the second TMUX window listed in
-`DEFAULT_PROJECT_WINDOWS` with a TMUX session named after the project
-but with `_2` append (e.g. `foo_2`).
+    NOTE: By default this will attach to the second TMUX window listed in
+    `DEFAULT_PROJECT_WINDOWS` with a TMUX session named after the project
+    but with `_2` append (e.g. `foo_2`).
 
 * In second terminal window `build`, `test`, ...
 
