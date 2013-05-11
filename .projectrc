@@ -942,10 +942,7 @@ function run() {
   fi
 
   if [[ -z "${VERBOSE}" || ${VERBOSE} -ne 0 ]]; then
-    echo "$(tput setaf 2)RUNNING ------------------------------------------------------------------------"
-    echo "PWD: $PWD"
-    echo "CMD: ${cmd}"
-    echo "--------------------------------------------------------------------------------$(tput sgr0)"
+    _print_cmd "RUNNING" "${cmd}"
   fi
 
   if ! ${DRY_RUN-false}; then
@@ -993,10 +990,7 @@ function share() {
   local cmd="cp -f ${run_dir}/${prog} ${dst}/${prog}"
 
   if [[ -z "${VERBOSE}" || ${VERBOSE} -ne 0 ]]; then
-    echo "$(tput setaf 2)SHARING ------------------------------------------------------------------------"
-    echo "PWD: $PWD"
-    echo "CMD: ${cmd}"
-    echo "--------------------------------------------------------------------------------$(tput sgr0)"
+    _print_cmd "SHARING" "${cmd}"
   fi
 
   if ! ${DRY_RUN-false}; then
@@ -2319,6 +2313,46 @@ function _get_run_cmd() {
   echo "${run_cmd}"
 }
 
+################################################################################
+# Prints command.
+#
+# HEADING -------------------------------
+# PWD: ...
+# CMD: ...
+# ---------------------------------------
+#
+# Args:
+#   $1: heading
+#   $2: raw command
+#   $3*: targets
+################################################################################
+function _print_cmd() {
+local sep="\
+--------------------------------------------------------------------------------"
+  echo "$(tput setaf 2)${1} ${sep:0:${#sep}-${#1}-1}"
+  shift
+  echo "PWD: $PWD"
+  local raw_cmd=${1}
+  shift
+  if [[ $((${#raw_cmd} + ${#1})) -lt 76 ]]; then
+    # Put first target on same line as command
+    local target=$(echo ${1}) # trim spaces
+    local next="CMD: ${raw_cmd} ${target} \\"
+    local offset=$((${#raw_cmd} + 5))
+    shift
+  else
+    local next="CMD: ${raw_cmd} \\"
+    local offset=8
+  fi
+  local padding="                                        "
+  for t in "$@"; do
+    echo "${next}"
+    local target=$(echo ${t}) # trim spaces
+    local next="${padding:0:${offset}} ${target} \\"
+  done
+  echo "${next:0:${#next}-2}"
+  echo "${sep}$(tput sgr0)"
+}
 
 ################################################################################
 # Help
