@@ -21,6 +21,11 @@
 #
 # See function comments and ~/.projects for examples of features.
 #
+# NOTE: The characters '...' following a directory path are intended to refer
+#       to a recursive target. For example, a/... means the a/ directory and
+#       all its sub-directories. By convention, targets and keyword flags are
+#       prefixed with ':' (e.g. 'geterrors :build', 'coverage :local', etc).
+#
 #
 # General Environment Variables:
 # -----------------------------------------------------------------------------
@@ -28,7 +33,8 @@
 #     Project name.
 #
 #   PROJECT_TYPE
-#     Type of project (scala, java, go, etc).
+#     Type of project (scala, java, go, etc). It is recommended to use the
+#     file extension to make it easy to find project files (e.g. py not python).
 #
 #   PROJECT_HOST
 #     Server project should be built/run/etc from (localhost, myserver, etc).
@@ -49,8 +55,8 @@
 #   PROJECT_DIR
 #     Main project directory
 #
-#   PROJECT_PKG
-#     Main package for project (e.g. com/foo/bar).
+#   PROJECT_PKGS
+#     List of main packages used by project (e.g. "com/example1 com/example2").
 #
 #   PROJECT_SRC_DIR
 #     Source directory for project (e.g. $PROJECT_DIR/src).
@@ -61,28 +67,39 @@
 #   PROJECT_BUILD_DIR
 #     Directory to use when running builds or linting.
 #
-#   PROJECT_RUN_DIR
-#     Directory to use when running program.
+#   PROJECT_BIN_DIR
+#     Directory executable program(s) are output to. $PROJECT_RUN_CMDS are
+#     relative to this directory.
+#
+#   PROJECT_GEN_DIR
+#     Directory generated code output to.
 #
 #   PROJECT_DEFAULT_FORMAT_TARGETS
-#     Default targets to use when format called without parameters (e.g.
-#     ${PROJECT_DIR}/${PROJECT_PKG}/**)
+#     Default targets to use when format called without parameters. (e.g.
+#     "FooClass BarClass"). If not set, a recursive target of '...' is added
+#     from $PROJECT_SRC_DIR and $PROJECT_TEST_DIR for each package listed in
+#     $PROJECT_PKGS.
 #
 #   PROJECT_DEFAULT_LINT_TARGETS
-#     Default targets to use when lint called without parameters (e.g.
-#     ${PROJECT_DIR}/${PROJECT_PKG}/**)
+#     Default targets to use when lint called without parameters. (e.g.
+#     "FooClass BarClass"). If not set, a recursive target of '...' is added
+#     from $PROJECT_SRC_DIR and $PROJECT_TEST_DIR for each package listed in
+#     $PROJECT_PKGS.
 #
 #   PROJECT_DEFAULT_BUILD_TARGETS
-#     Default targets to use when build called without parameters (e.g.
-#     ${PROJECT_DIR}/${PROJECT_PKG}/:all)
+#     Default targets to use when build called without parameters. (e.g.
+#     "FooClass BarClass"). If not set, a recursive target of '...' is added
+#     from $PROJECT_SRC_DIR and $PROJECT_TEST_DIR for each package listed in
+#     $PROJECT_PKGS.
 #
 #   PROJECT_DEFAULT_TEST_TARGETS
-#     Default targets to use when test called without parameters (e.g.
-#     FooTest BarTest)
+#     Default targets to use when test called without parameters. (e.g.
+#     "FooTest BarTest"). If not set, a recursive target of '...' is added
+#     from $PROJECT_TEST_DIR for each package listed in $PROJECT_PKGS.
 #
 #   PROJECT_TARGETS_IGNORE
 #     This variable is set to a comma separated list of names matching
-#     targets to ignore when searching for matches for build/lint/...
+#     targets to ignore when searching for matches for build/lint/etc
 #     (e.g. /tmp, /backup, etc). Any matching occurrence of these tags
 #     within a target will match (e.g. /tmp means */tmp*)
 #
@@ -135,6 +152,8 @@
 #
 #   PROJECT_GETERRORS_FN
 #     Name of function to call when 'geterrors' invoked within the project.
+#     Errors should be echoed as lines of: <file>:<line>:<col>:<message>.
+#     See geterrors function for more information.
 #
 #   DEFAULT_PROJECT_GETERRORS_FN
 #     Default function to use if PROJECT_GETERRORS_FN not set.
@@ -152,7 +171,7 @@
 #     Default function to use if PROJECT_SANITY_FN not set.
 #
 #
-# Sharing/Syncing/Backup/... Environment Variables:
+# Sharing/Syncing/Backup Environment Variables:
 # -----------------------------------------------------------------------------
 #   PROJECT_SHARE_DIR
 #     This variable is set to the directory to use for copying executables
@@ -210,6 +229,27 @@
 #   DRY_RUN
 #     The dry run flag will print the command that will execute, but not
 #     actualy execute it. This is a true/false settings (e.g. DRY_RUN=true)
+#
+#
+# Helper Functions for Implementating PROJECT_BUILD_FN, etc:
+# -----------------------------------------------------------------------------
+#   _normalize_targets <targets>
+#     Converts a list of targets relative to cur directory to names relative
+#     to the base source or test directory.
+#
+#     Example (assuming cur dir /home/dude/proj/src/a):
+#       $ normalized=$(_normalize_targets a1 ../b/...)
+#       $ echo $normalized
+#       a/a1 b/...
+#
+#   _expand_targets <extension> <targets>
+#     Converts a list of targets containing the recursive '...' indicator into
+#     full paths ending in the given extension.
+#
+#     Example (assuming dirs a/a1, a/a2, b/b2):
+#       $ expanded=$(_expand_targets *.scala a/... x.txt b/...)
+#       $ echo $expanded
+#       a/a1/*.scala a/a2/*.scala x.txt b/b2/*.scala
 ################################################################################
 
 ################################################################################
@@ -254,18 +294,44 @@ fi
 alias tmux='TERM=screen-256color-bce tmux -2'
 
 # Project directory aliases
-alias cdsrc='cd "${PROJECT_SRC_DIR}/${PROJECT_PKG}"'
-alias pushsrc='pushd "${PROJECT_SRC_DIR}/${PROJECT_PKG}"'
-alias cdcommon='cd "${PROJECT_SRC_DIR}/${PROJECT_PKG}/../common"'
-alias pushcommon='pushd "${PROJECT_SRC_DIR}/${PROJECT_PKG}/../common"'
 alias cdproject='cd "${PROJECT_DIR}"'
 alias pushproject='pushd "${PROJECT_DIR}"'
 alias cdbuild='cd "${PROJECT_BUILD_DIR}"'
 alias pushbuild='pushd "${PROJECT_BUILD_DIR}"'
-alias cdtest='cd "${PROJECT_TEST_DIR}/${PROJECT_PKG}"'
-alias pushdtest='pushd "${PROJECT_TEST_DIR}/${PROJECT_PKG}"'
-alias cdrun='cd "${PROJECT_RUN_DIR}"'
-alias pushrun='pushd "${PROJECT_RUN_DIR}"'
+alias cdsrc='cd "${PROJECT_SRC_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[0]})"'
+alias cdsrc2='cd "${PROJECT_SRC_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[1]})"'
+alias cdsrc3='cd "${PROJECT_SRC_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[2]})"'
+alias cdsrc4='cd "${PROJECT_SRC_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[3]})"'
+alias cdsrc5='cd "${PROJECT_SRC_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[4]})"'
+alias pushsrc='pushd "${PROJECT_SRC_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[0]})"'
+alias pushsrc2='pushd "${PROJECT_SRC_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[1]})"'
+alias pushsrc3='pushd "${PROJECT_SRC_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[2]})"'
+alias pushsrc4='pushd "${PROJECT_SRC_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[3]})"'
+alias pushsrc5='pushd "${PROJECT_SRC_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[4]})"'
+alias cdcommon='cd "${PROJECT_SRC_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[0]})/../common"'
+alias pushcommon='pushd "${PROJECT_SRC_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[0]})/../common"'
+alias cdtest='cd "${PROJECT_TEST_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[0]})"'
+alias cdtest2='cd "${PROJECT_TEST_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[1]})"'
+alias cdtest3='cd "${PROJECT_TEST_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[2]})"'
+alias cdtest4='cd "${PROJECT_TEST_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[3]})"'
+alias cdtest5='cd "${PROJECT_TEST_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[4]})"'
+alias pushtest='pushd "${PROJECT_TEST_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[0]})"'
+alias pushtest2='pushd "${PROJECT_TEST_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[1]})"'
+alias pushtest3='pushd "${PROJECT_TEST_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[2]})"'
+alias pushtest4='pushd "${PROJECT_TEST_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[3]})"'
+alias pushtest5='pushd "${PROJECT_TEST_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[4]})"'
+alias cdbin='cd "${PROJECT_BIN_DIR}"'
+alias pushbin='pushd "${PROJECT_BIN_DIR}"'
+alias cdgen='cd "${PROJECT_GEN_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[0]})"'
+alias cdgen2='cd "${PROJECT_GEN_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[1]})"'
+alias cdgen3='cd "${PROJECT_GEN_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[2]})"'
+alias cdgen4='cd "${PROJECT_GEN_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[3]})"'
+alias cdgen5='cd "${PROJECT_GEN_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[4]})"'
+alias pushgen='pushd "${PROJECT_GEN_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[0]})"'
+alias pushgen2='pushd "${PROJECT_GEN_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[1]})"'
+alias pushgen3='pushd "${PROJECT_GEN_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[2]})"'
+alias pushgen4='pushd "${PROJECT_GEN_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[3]})"'
+alias pushgen5='pushd "${PROJECT_GEN_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[4]})"'
 
 # Project url aliases/functions
 function openbug() { open $(geturl bug "${1}"); }
@@ -481,7 +547,7 @@ function project() {
 #   win                     # display current window
 #   win ls                  # list windows
 #   win new foo             # create new window
-#   win session             # switch to window assoc with session (foo_2 => 2)
+#   win session             # list window assoc with session (foo_2 => 2)
 #   win bash                # switch to bash window
 #   win repl                # switch to repl window
 #
@@ -490,8 +556,12 @@ function project() {
 ################################################################################
 function win() {
   if [[ "${1}" == "session" ]]; then
+    shift
     local session=$(tmux display-message -p "#S" 2> /dev/null)
     local win_num=${session##*_}
+    if [[ "${win_num}" == "${session}" ]]; then
+      local win_num=1
+    fi
   else
     local win_num=$(tmux display-message -p "#I" 2> /dev/null)
   fi
@@ -607,8 +677,8 @@ function search() {
 #
 # Examples:
 #   format             # default targets (e.g. DEFAULT_PROJECT_FORMAT_TARGETS)
-#   format :all        # all targets
-#   format -p xxx :all # format all in project xxx
+#   format ...         # format recursively from current dir
+#   format -p xxx ...  # format recursively in project xxx
 #   VERBOSE=0 format
 #   DRY_RUN=true format
 #
@@ -646,8 +716,8 @@ function format() {
 #
 # Examples:
 #   lint             # default targets (e.g. DEFAULT_PROJECT_LINT_TARGETS)
-#   lint :all        # all targets
-#   lint -p xxx :all # lint all in project xxx
+#   lint ...         # lint recursively from current dir
+#   lint -p xxx ...  # lint recursively in project xxx
 #   VERBOSE=0 lint
 #   DRY_RUN=true lint
 #
@@ -805,16 +875,23 @@ function coverage() {
 # PROJECT_GETERRORS_FN environment variable (set in ~/.projects) or
 # DEFAULT_PROJECT_GETERRORS_FN (set in ~/.bashrc).
 #
+# Errors should be echoed as lines of: <file>:<line>:<col>:<message>. The
+# function may be called with keyword parameters such as ':build', ':lint',
+# ':test', ':coverage', etc to request the errors from the last build/lint/etc.
+# It may also be called with a list of targets to get all the errors related to
+# the target.
+#
 # Examples:
-#   geterrors build
-#   geterrors lint
-#   geterrors test
-#   geterrors coverage
+#   geterrors :build          # Get errors from last call to build
+#   geterrors :lint           # Get errors from last call to lint
+#   geterrors :test           # Get errors from last call to test
+#   geterrors :coverage       # Get errors from last call to coverage
+#   geterrors foo.py          # Get current foo.py errors
 #   VERBOSE=0 geterrors build
 #   DRY_RUN=true geterrors build
 #
 # Args:
-#   type: build, lint, test, ...
+#   type: :build, :lint, :test, :coverage, <target>
 ################################################################################
 function geterrors() {
   local project_name="${PROJECT_NAME}"
@@ -842,22 +919,22 @@ function geterrors() {
 # REQUIREMENTS: project env vars are properly set (via 'project <name>')
 #
 # Examples:
-#   geturl review           # default code review url for project
-#   geturl review xxx       # code review xxx
-#   geturl bug              # default bug for project
-#   geturl bug xxx          # bug xxx
-#   geturl build            # last build
-#   geturl test             # last test run
-#   geturl coverage         # last coverage run
-#   VERBOSE=0 geturl build  # verbose
-#   DRY_RUN=true geturl build  # dry-run
+#   geturl :review              # default code review url for project
+#   geturl :review xxx          # code review xxx
+#   geturl :bug                 # default bug for project
+#   geturl :bug xxx             # bug xxx
+#   geturl :build               # last build
+#   geturl :test                # last test run
+#   geturl :coverage            # last coverage run
+#   VERBOSE=0 geturl :build     # verbose
+#   DRY_RUN=true geturl :build  # dry-run
 #
 # This function relies on the existance of a function pointed to by the
 # PROJECT_GETURL_FN environment variable (set in ~/.projects) or
 # DEFAULT_PROJECT_GETURL_FN (set in ~/.bashrc).
 #
 # Args:
-#   type: review, bug, build, test, coverage, ...
+#   type: :review, :bug, :build, :test, :coverage, etc
 #   id: ide for review/bug, etc
 ################################################################################
 function geturl() {
@@ -931,12 +1008,12 @@ function run() {
   local run_cmd=$(_get_run_cmd ${project_name} $*)
   local debug_flags=""
   if $debug; then
-    if [[ "${PROJECT_TYPE}" == "python" ]]; then
+    if [[ "${PROJECT_TYPE}" == "py"* ]]; then
       debug_flags=" --run_with_pdb"
     fi
   fi
 
-  local cmd="${PROJECT_RUN_DIR}/${run_cmd}${debug_flags}"
+  local cmd="${PROJECT_BIN_DIR}/${run_cmd}${debug_flags}"
   if $shared; then
     cmd="${PROJECT_SHARE_DIR}/${run_cmd}${debug_flags}"
   fi
@@ -985,9 +1062,9 @@ function share() {
     prog="${project_name}"
   fi
 
-  local run_dir=$(_project_var "${project_name}" "PROJECT_RUN_DIR")
+  local bin_dir=$(_project_var "${project_name}" "PROJECT_BIN_DIR")
   local dst="${PROJECT_SHARE_DIR}"
-  local cmd="cp -f ${run_dir}/${prog} ${dst}/${prog}"
+  local cmd="cp -f ${bin_dir}/${prog} ${dst}/${prog}"
 
   if [[ -z "${VERBOSE}" || ${VERBOSE} -ne 0 ]]; then
     _print_cmd "SHARING" "${cmd}"
@@ -1086,7 +1163,7 @@ function settest() {
   project_name="${project_name%%:*}"
 
   local targets=""
-  for target in $(_find_targets "$@"); do
+  for target in $(_normalize_targets "$@"); do
     # Strip pre-package path
     local normalized_target=${target##${PROJECT_TEST_DIR}}
     # Remove any extension
@@ -1146,7 +1223,7 @@ function updatetest() {
 
   # Convert removed items to full targets
   local removed_targets=""
-  for target in $(_find_targets ${removed}); do
+  for target in $(_normalize_targets ${removed}); do
     # Strip pre-package path
     local normalized_target=${target##${PROJECT_TEST_DIR}}
     # Remove any extension
@@ -1159,7 +1236,7 @@ function updatetest() {
   # Filter removed from current targets
   local targets=""
   pushd "${PROJECT_TEST_DIR}" &> /dev/null
-  for target in $(_find_targets ${PROJECT_DEFAULT_TEST_TARGETS}); do
+  for target in $(_normalize_targets ${PROJECT_DEFAULT_TEST_TARGETS}); do
     if [[ ! "${removed_targets}" == *"${target}"* ]]; then
       if [[ -z "${targets}" ]]; then
         local targets="${target}"
@@ -1171,7 +1248,7 @@ function updatetest() {
   popd &> /dev/null
 
   # Convert added items to full targets and add to current
-  for target in $(_find_targets ${added}); do
+  for target in $(_normalize_targets ${added}); do
     # Strip pre-package path
     local normalized_target=${target##${PROJECT_TEST_DIR}}
     # Remove any extension
@@ -1243,8 +1320,8 @@ function getrun() {
   if [[ $# -eq 0 ]]; then
     echo "$(_project_var ${project_name} PROJECT_DEFAULT_RUN_CMDS)"
   else
-    local run_dir=$(_project_var ${project_name} PROJECT_RUN_DIR)
-    echo "${run_dir}/$(_get_run_cmd ${project_name} $*)"
+    local bin_dir=$(_project_var ${project_name} PROJECT_BIN_DIR)
+    echo "${bin_dir}/$(_get_run_cmd ${project_name} $*)"
   fi
 }
 
@@ -1603,10 +1680,10 @@ function _project_ls() {
 }
 
 ################################################################################
-# Returns list of project vars (A=B C=D ...) (internal use)
+# Returns list of project vars (A=B C=D etc) (internal use)
 #
 # Args:
-#   $1: Project name (e.g. tmux session)
+#   $1: Project name
 #   $* (optional): Space separated list of names of vars to return
 ################################################################################
 function _project_vars() {
@@ -1651,6 +1728,10 @@ function _project_vars() {
     vars+=("PROJECT_SANITY_FN=${DEFAULT_PROJECT_SANITY_FN}")
   fi
 
+  local found_format=0
+  local found_lint=0
+  local found_build=0
+  local found_test=0
   while read line; do
     if [[ "${line}" == "PROJECT_NAME=${project_name}" ]]; then
       local found=1
@@ -1661,8 +1742,34 @@ function _project_vars() {
         [[ "${line}" != alias* ]] && \
         [[ "${2}" == "" || ${2} =~ "${line%%=*}" ]]; then
       vars+=(${line})
+      if [[ "${line}" == "PROJECT_DEFAULT_FORMAT_TARGETS"* ]]; then
+        found_format=1
+      fi
+      if [[ "${line}" == "PROJECT_DEFAULT_LINT_TARGETS"* ]]; then
+        found_lint=1
+      fi
+      if [[ "${line}" == "PROJECT_DEFAULT_BUILD_TARGETS"* ]]; then
+        found_build=1
+      fi
+      if [[ "${line}" == "PROJECT_DEFAULT_TEST_TARGETS"* ]]; then
+        found_test=1
+      fi
     fi
   done < ~/.projects
+
+  if [[ found_format -eq 0 ]]; then
+    vars+=("PROJECT_DEFAULT_FORMAT_TARGETS=$(_expand_pkgs 3)")
+  fi
+  if [[ found_lint -eq 0 ]]; then
+    vars+=("PROJECT_DEFAULT_LINT_TARGETS=$(_expand_pkgs 3)")
+  fi
+  if [[ found_build -eq 0 ]]; then
+    vars+=("PROJECT_DEFAULT_BUILD_TARGETS=$(_expand_pkgs 3)")
+  fi
+  if [[ found_teset -eq 0 ]]; then
+    vars+=("PROJECT_DEFAULT_TEST_TARGETS=$(_expand_pkgs 2)")
+  fi
+
   echo "${vars[@]}"
 }
 
@@ -1670,7 +1777,7 @@ function _project_vars() {
 # Returns a specific project vars value (internal use)
 #
 # Args:
-#   $1: Project name (e.g. tmux session)
+#   $1: Project name
 #   $2: Project var name
 ################################################################################
 function _project_var() {
@@ -1687,7 +1794,7 @@ function _project_var() {
 # Project settings command (internal use - see project).
 #
 # Args:
-#   $1: Project name (e.g. tmux session)
+#   $1: Project name
 ################################################################################
 function _project_settings() {
   local project_name="${1}"
@@ -1719,7 +1826,7 @@ function _project_settings() {
     fi
   done < ~/.projects
 
-  # Add missing defaults (only important ones...)
+  # Add missing defaults (only important ones)
   local defaults=("PROJECT_HOST" "PROJECT_WINDOWS")
   for def in "${defaults[@]}"; do
     found=0
@@ -1741,7 +1848,7 @@ function _project_settings() {
 # Project init (internal use - see project).
 #
 # Args:
-#   $1: Project name (e.g. tmux session)
+#   $1: Project name
 ################################################################################
 function _project_init() {
   local project_name="${1}"
@@ -1784,6 +1891,10 @@ function _project_init() {
   fi
 
   local found=0
+  local found_format=0
+  local found_lint=0
+  local found_build=0
+  local found_test=0
   while read line; do
     if [[ "${line}" == "PROJECT_NAME=${project_name}" ]]; then
       local found=1
@@ -1797,9 +1908,34 @@ function _project_init() {
       else
         # variable definitions
         eval "export ${line}" &> /dev/null
+        if [[ "${line}" == "PROJECT_DEFAULT_FORMAT_TARGETS"* ]]; then
+          found_format=1
+        fi
+        if [[ "${line}" == "PROJECT_DEFAULT_LINT_TARGETS"* ]]; then
+          found_lint=1
+        fi
+        if [[ "${line}" == "PROJECT_DEFAULT_BUILD_TARGETS"* ]]; then
+          found_build=1
+        fi
+        if [[ "${line}" == "PROJECT_DEFAULT_TEST_TARGETS"* ]]; then
+          found_test=1
+        fi
       fi
     fi
   done < ~/.projects
+
+  if [[ found_format -eq 0 ]]; then
+    eval "export PROJECT_DEFAULT_FORMAT_TARGETS=\"$(_expand_pkgs 3)\""
+  fi
+  if [[ found_lint -eq 0 ]]; then
+    eval "export PROJECT_DEFAULT_LINT_TARGETS=\"$(_expand_pkgs 3)\""
+  fi
+  if [[ found_build -eq 0 ]]; then
+    eval "export PROJECT_DEFAULT_BUILD_TARGETS=\"$(_expand_pkgs 3)\""
+  fi
+  if [[ found_teset -eq 0 ]]; then
+    eval "export PROJECT_DEFAULT_TEST_TARGETS=\"$(_expand_pkgs 2)\""
+  fi
 }
 
 ################################################################################
@@ -1902,7 +2038,7 @@ function _project_attach() {
 # Files are backed up to PROJECT_BACKUP_DIR/<timestamp>
 #
 # Args:
-#   $1: Project name (e.g. tmux session)
+#   $1: Project name
 ################################################################################
 function _project_backup() {
   local project_name="${1}"
@@ -1950,7 +2086,7 @@ function _project_backup() {
 # Syncs local and remote project files (internal use).
 #
 # Args:
-#   $1: Project name (e.g. tmux session)
+#   $1: Project name
 ################################################################################
 function _project_sync() {
   local project_name="${1}"
@@ -1985,7 +2121,7 @@ function _project_sync() {
 }
 
 ################################################################################
-# Helper function to search for list of target names within a project.
+# Helper function to normalize a list of target names used within a project.
 #
 # Example (assuming current dir is ${PROJECT_SRC_HOME}/start/here):
 #   INPUT: foo ../bar ../baz:all :target
@@ -1998,7 +2134,7 @@ function _project_sync() {
 #   List of targets with dirs relative to ${PROJECT_SRC_DIR} or
 #   ${PROJECT_TEST_DIR}
 ################################################################################
-function _find_targets() {
+function _normalize_targets() {
   base_dir="${PROJECT_SRC_DIR}"
   if [[ "${PWD}" == "${PROJECT_TEST_DIR}"* ]]; then
     base_dir="${PROJECT_TEST_DIR}"
@@ -2038,18 +2174,60 @@ function _find_targets() {
 }
 
 ################################################################################
+# Helper function to expand package directories to include src/test dirs.
+#
+# Directories to include are specified with the first params:
+#   $1 == 1   PROJECT_SRC_DIR
+#   $1 == 2   PROJECT_TEST_DIR
+#   $1 == 3   PROJECT_SRC_DIR and PROJECT_TEST_DIR (if different else only one)
+#
+# Example
+#   PROJECT_PKGS="a b"
+#   PROJECT_SRC_DIR=${PROJECT_DIR}/src
+#   INPUT: 1
+#   OUTPUT: "${PROJECT_SRC_DIR}/a ${PROJECT_SRC_DIR}/b"
+#
+# Args:
+#   $1: 1 - include src dirs, 2 - include test dirs, 3 include both
+#
+# Returns:
+#   Space separated list of expanded dirs
+################################################################################
+function _expand_pkgs() {
+  local dirs=()
+  if [[ $1 -eq 1 || "${PROJECT_SRC_DIR}" == "${PROJECT_TEST_DIR}" ]]; then
+    dirs+=("${PROJECT_SRC_DIR}")
+  elif [[ $1 -eq 2 ]]; then
+    dirs+=("${PROJECT_TEST_DIR}")
+  else
+    dirs+=("${PROJECT_SRC_DIR}")
+    dirs+=("${PROJECT_TEST_DIR}")
+  fi
+
+  local expanded=()
+  for d in "${dirs[@]}"; do
+    local pkgs=(${PROJECT_PKGS})
+    for p in "${pkgs[@]}"; do
+      expanded+=("${d}/${p}/...")
+    done
+  done
+
+  echo "${expanded[*]}"
+}
+
+################################################################################
 # Helper function to recursively expand directories within targets.
 #
-# Any trailing ... or ** indicators to target recusive directories will be
+# Any trailing '...' indicators to target recusive directories will be
 # removed.
 #
 # Example (assuming a/b with subdirs c and d and e with subdir f):
-#   INPUT: a/b x.txt e/**
+#   INPUT: a/b x.txt e/...
 #   OUTPUT: a/b/c a/b/d x.txt e/f
 #
 # Args:
-#   $1: Extension to add after dir expansion (e.g. foo/** -> foo/*.py)
-#       NOTE: Use "/" to convert foo/** to foo/
+#   $1: Extension to add after dir expansion (e.g. *.py and foo/... -> foo/*.py)
+#       NOTE: Use "/" to convert foo/... to foo/
 #   $*: Named targets to search for relative to base src/test dir.
 #
 # Returns:
@@ -2317,8 +2495,8 @@ function _get_run_cmd() {
 # Prints command.
 #
 # HEADING -------------------------------
-# PWD: ...
-# CMD: ...
+# PWD: .....
+# CMD: .....
 # ---------------------------------------
 #
 # Args:
@@ -2412,6 +2590,3 @@ project $(tmux display-message -p "#S" 2> /dev/null) &> /dev/null
 
 # If project still not set, then no sessions setup, use default project
 [[ -z "${PROJECT_NAME}" ]] && project $(_default_project)
-
-# Change to default window for session (e.g. foo_2 => 2)
-win $(tmux display-message -p "#S" 2> /dev/null) &> /dev/null

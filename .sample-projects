@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright 2011-2012 Mike Dreves
+# Copyright 2012-2013 Mike Dreves
 #
 # All rights reserved. This program and the accompanying materials
 # are made available under the terms of the Eclipse Public License v1.0
@@ -32,13 +32,14 @@
 #   PROJECT_WINDOWS="vim,bash,repl"
 #   PROJECT_BUG=555555
 #   PROJECT_DIR=${HOME}/Workspace/${PROJECT_NAME}
-#   PROJECT_PKG=some/dir                      # project root pkg dir
+#   PROJECT_PKGS="com/example1 com/example2"
 #   PROJECT_SRC_DIR=${PROJECT_DIR}/src
 #   PROJECT_TEST_DIR=${PROJECT_DIR}/test
-#   PROJECT_BUILD_DIR=${PROJECT_DIR}          # Used for both lint/build
-#   PROJECT_RUN_DIR=${PROJECT_DIR}/target     # Contains built executable
-#   PROJECT_DEFAULT_FORMAT_TARGETS="${PROJECT_SRC_DIR}/${PROJECT_PKG}/..."
-#   PROJECT_DEFAULT_LINT_TARGETS="${PROJECT_SRC_DIR}/${PROJECT_PKG}/..."
+#   PROJECT_BUILD_DIR=${PROJECT_DIR}           # Used for both lint/build
+#   PROJECT_BIN_DIR=${PROJECT_DIR}/target/bin  # Contains built executable
+#   PROJECT_GEN_DIR=${PROJECT_DIR}/target/gen  # Contains generated code
+#   PROJECT_DEFAULT_FORMAT_TARGETS="${PROJECT_SRC_DIR}/com/example1/*.scala"
+#   PROJECT_DEFAULT_LINT_TARGETS="..."
 #   PROJECT_DEFAULT_BUILD_TARGETS=":all"
 #   PROJECT_DEFAULT_TEST_TARGETS="FooTest BarTest"
 #   PROJECT_TARGETS_IGNORE="/tmp"
@@ -101,17 +102,14 @@ PROJECT_NAME=example1
 PROJECT_TYPE=scala
 PROJECT_HOST=mybuild-machine
 PROJECT_WINDOWS="vim,bash,repl"
-PROJECT_PKG=com/example1
+PROJECT_PKGS="com/example1 com/example2"
 PROJECT_BUG=1234
 PROJECT_DIR=${HOME}/Workspace/${PROJECT_NAME}
 PROJECT_SRC_DIR=${PROJECT_DIR}/src
 PROJECT_TEST_DIR=${PROJECT_DIR}/test
 PROJECT_BUILD_DIR=${PROJECT_DIR}
-PROJECT_RUN_DIR=${PROJECT_DIR}/target
-PROJECT_DEFAULT_BUILD_TARGETS="${PROJECT_PKG}/..."
-PROJECT_DEFAULT_LINT_TARGETS="${PROJECT_PKG}/..."
-PROJECT_DEFAULT_FORMAT_TARGETS="${PROJECT_PKG}/..."
-PROJECT_DEFAULT_TEST_TARGETS="${PROJECT_PKG}/..."
+PROJECT_BIN_DIR=${PROJECT_DIR}/target/bin
+PROJECT_GEN_DIR=${PROJECT_DIR}/target/gen
 PROJECT_DEFAULT_RUN_CMDS="client::client -log_dir=log -server=localhost:54321 server::server -port=54321"
 alias deploy="scala_deploy_script"
 
@@ -126,7 +124,7 @@ PROJECT_DIR=${HOME}/Workspace/${PROJECT_NAME}
 PROJECT_SRC_DIR=${PROJECT_DIR}
 PROJECT_TEST_DIR=${PROJECT_DIR}
 PROJECT_BUILD_DIR=${PROJECT_DIR}
-PROJECT_RUN_DIR=${PROJECT_DIR}
+PROJECT_BIN_DIR=${PROJECT_DIR}
 PROJECT_DEFAULT_BUILD_TARGETS="${PROJECT_PKG}/..."
 PROJECT_DEFAULT_LINT_TARGETS="${PROJECT_PKG}/..."
 PROJECT_DEFAULT_FORMAT_TARGETS="${PROJECT_PKG}/..."

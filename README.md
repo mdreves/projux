@@ -67,7 +67,7 @@ A basic workflow might be as follows:
 
           PROJECT_NAME=foo
           PROJECT_TYPE=scala
-          PROJECT_TYPE=overthere
+          PROJECT_HOST=overthere
           ...
           alias deploy='my_deploy_script'
           ...
@@ -262,8 +262,8 @@ A basic workflow might be as follows:
 
       Examples:
         format                 :  Format DEFAULT_PROJECT_FORMAT_TARGETS targets
-        format :all            :  Format :all target
-        format -p foo :all     :  Format :all target in project foo
+        format ...             :  Format recursively from current dir
+        format -p foo ...      :  Format recursively in project foo
 
 ## lint
     $ lint [-p <project>] <targets>
@@ -272,8 +272,8 @@ A basic workflow might be as follows:
 
       Examples:
         lint                   :  Lint DEFAULT_PROJECT_LINT_TARGETS targets
-        lint :all              :  Lint :all target
-        lint -p foo :all       :  Lint :all target in project foo
+        lint ...               :  Lint recursively from current dir
+        lint -p foo ...        :  Lint recursively in project foo
 
 ## build
     $ build [-p <project>] <targets>
@@ -380,10 +380,10 @@ A basic workflow might be as follows:
 ## share
     $ share [-p <project>] <prog>
 
-      Copies named program file from $PROJECT_RUN_DIR to $PROJECT_SHARE_DIR.
+      Copies named program file from $PROJECT_BIN_DIR to $PROJECT_SHARE_DIR.
 
       Examples:
-        share client           :  cp $PROJECT_RUN_DIR/client $PROJECT_SHARED_DIR
+        share client           :  cp $PROJECT_BIN_DIR/client $PROJECT_SHARED_DIR
 
 ## sanity
     $ sanity [-p <project>]
@@ -395,7 +395,7 @@ A basic workflow might be as follows:
 
       Examples:
         sanity                 :  Run sanity for current project
-        sanity -p foo :all     :  Run sanity on project foo
+        sanity -p foo          :  Run sanity on project foo
 
 ## Misc
     sshproj
@@ -403,18 +403,6 @@ A basic workflow might be as follows:
 
     sftpproj
       sftp $PROJECT_HOST
-
-    cdsrc
-      cd $PROJECT_SRC_DIR/$PROJECT_PKG
-
-    pushsrc
-      pushd $PROJECT_SRC_DIR/$PROJECT_PKG
-
-    cdcommon
-      cd $PROJECT_SRC_DIR/$PROJECT_PKG/../common
-
-    pushcommon
-      pushd $PROJECT_SRC_DIR/$PROJECT_PKG/../common
 
     cdproject
       cd $PROJECT_DIR
@@ -428,22 +416,45 @@ A basic workflow might be as follows:
     pushbuild
       pushd $PROJECT_BUILD_DIR
 
-    cdtest
-      cd $PROJECT_TEST_DIR
+    cdsrc (also cdsrc2, ..., cdsrc5)
+      cd $PROJECT_SRC_DIR/$(arr=(${PROJECT_PKGS}); echo ${arr[0]})
 
-    pushdtest
-      pushd $PROJECT_TEST_DIR
+    pushsrc (also pushsrc2, .. pushsrc5)
+      pushd $PROJECT_SRC_DIR/$(arr=(${PROJECT_PKGS}); echo ${arr[0]})
 
-    cdrun
-      cd $PROJECT_RUN_DIR
+    cdtest (also cdtest2, ..., cdtest5)
+      cd $PROJECT_TEST_DIR/$(arr=(${PROJECT_PKGS}); echo ${arr[0]})
 
-    pushrun
-      pushd $PROJECT_RUN_DIR
+    pushtest (also pushtest2, ..., pushtest5)
+      pushd $PROJECT_TEST_DIR/$(arr=(${PROJECT_PKGS}); echo ${arr[0]})
 
-    geterrors {build|lint|test|coverage}
+    cdgen (also cdgen2, ..., cdgen5)
+      cd $PROJECT_GEN_DIR/$(arr=(${PROJECT_PKGS}); echo ${arr[0]})
+
+    pushgen (also pushgen2, ..., pushgen5)
+      pushd $PROJECT_GEN_DIR/$(arr=(${PROJECT_PKGS}); echo ${arr[0]})
+
+    cdbin
+      cd $PROJECT_BIN_DIR
+
+    pushbin
+      pushd $PROJECT_BIN_DIR
+
+    geterrors {:build|:lint|:test|:coverage|<target>}
       Returns VIM quickfix friendly errors for last build/lint/test/coverage.
+      Errors should be echoed in the form: <filename>:<line>:<col>:<message>.
+      If called with ':build', ':lint', ':test', or ':coverage' then errors
+      from the last build/lint/test/coverage should be returned. Otherwise
+      the errors for the passed in target should be returned.
 
-    geturl {build|test|coverage|bug <id>|review <id>}
+      Examples:
+        geterrors :build            # Errors from last build
+        geterrors :lint             # Errors from last lint
+        geterrors :test             # Errors from last test
+        geterrors :coverage         # Errors from last coverage
+        geterrors foo.py            # Current errors for file foo.py
+
+    geturl {:build|:test|:coverage|:bug <id>|:review <id>}
       Returns URL with results for last build/test/coverage or for a bug/review.
 
     openbug <id>
@@ -496,8 +507,8 @@ A basic workflow might be as follows:
     PROJECT_DIR
       Main project directory
 
-    PROJECT_PKG
-      Main package for project (e.g. com/foo/bar).
+    PROJECT_PKGS
+      Space separated list of packages for project (e.g. "com/a com/b").
 
     PROJECT_SRC_DIR
       Source directory for project (e.g. $PROJECT_DIR/src).
@@ -508,24 +519,34 @@ A basic workflow might be as follows:
     PROJECT_BUILD_DIR
       Directory to use when running builds or linting.
 
-    PROJECT_RUN_DIR
-      Directory containing executable program.
+    PROJECT_BIN_DIR
+      Directory containing executable program(s).
+
+    PROJECT_GEN_DIR
+      Directory containing generated code.
 
     PROJECT_DEFAULT_FORMAT_TARGETS
-      Default targets to use when format called without parameters (e.g.
-      ${PROJECT_DIR}/${PROJECT_PKG}/...)
+      Default targets to use when format called without parameters. (e.g.
+      "FooClass BarClass"). If not set, a recursive target of '...' is added
+      from $PROJECT_SRC_DIR and $PROJECT_TEST_DIR for each package listed in
+      $PROJECT_PKGS.
 
     PROJECT_DEFAULT_LINT_TARGETS
-      Default targets to use when lint called without parameters (e.g.
-      ${PROJECT_DIR}/${PROJECT_PKG}/...)
+      Default targets to use when lint called without parameters. (e.g.
+      "FooClass BarClass"). If not set, a recursive target of '...' is added
+      from $PROJECT_SRC_DIR and $PROJECT_TEST_DIR for each package listed in
+      $PROJECT_PKGS.
 
     PROJECT_DEFAULT_BUILD_TARGETS
-      Default targets to use when build called without parameters (e.g.
-      ${PROJECT_DIR}/${PROJECT_PKG}/:all)
+      Default targets to use when build called without parameters. (e.g.
+      "FooClass BarClass"). If not set, a recursive target of '...' is added
+      from $PROJECT_SRC_DIR and $PROJECT_TEST_DIR for each package listed in
+      $PROJECT_PKGS.
 
     PROJECT_DEFAULT_TEST_TARGETS
-      Default targets to use when test called without parameters (e.g.
-      FooTest BarTest)
+      Default targets to use when test called without parameters. (e.g.
+      "FooTest BarTest"). If not set, a recursive target of '...' is added
+      from $PROJECT_TEST_DIR for each package listed in $PROJECT_PKGS.
 
     PROJECT_TARGETS_IGNORE
       This variable is set to a comma separated list of names matching
@@ -586,6 +607,8 @@ A basic workflow might be as follows:
 
     PROJECT_GETERRORS_FN
       Name of function to call when 'geterrors' invoked within the project.
+      Errors should be returned as lines of: <file>:<line>:<col>:<message>.
+      See geterrors function definition for more information.
 
     DEFAULT_PROJECT_GETERRORS_FN
       Default function to use if PROJECT_GETERRORS_FN not set.
@@ -642,6 +665,61 @@ A basic workflow might be as follows:
     DRY_RUN
       The dry run flag will print the command that will execute, but not
       actualy execute it. This is a true/false settings (e.g. DRY_RUN=true)
+
+# Implementing Project Functions
+
+## Helper Functions
+
+    _normalize_targets <targets>
+      Converts a list of targets relative to cur directory to names relative
+      to the base source or test directory.
+
+      Example (assuming cur dir /home/dude/proj/src/a):
+        $ normalized=$(_normalize_targets a1 ../b/...)
+        $ echo $normalized
+        a/a1 b/...
+
+    _expand_targets <extension> <targets>
+      Converts a list of targets containing the recursive '...' indicator into
+      full paths ending in the given extension.
+
+      Example (assuming dirs a/a1, a/a2, b/b2):
+        $ expanded=$(_expand_targets *.scala a/... x.txt b/...)
+        $ echo $expanded
+        a/a1/*.scala a/a2/*.scala x.txt b/b2/*.scala
+
+    _print_cmd <heading> <cmd> <targets>
+      Pretty prints information about a command being run.
+
+      Example
+        $ _print_cmd "ECHO" "echo" $expanded
+        ECHO ----------------------------
+        PWD: /home/dude/proj
+        CMD: echo a/a1/*.scala \
+                  a/a2/*.scala \
+                  x.txt \
+                  b/b2/*.scala
+        ---------------------------------
+
+## Example Implementation
+
+    # Example: 'format ../...' => gofmt -w a/* a/a1/*.go a/a2/*.go b/*.go
+    #   Assuming in src/a and there are src/a/a1, src/a/a2, src/b dirs
+    function example_format() {
+      # convert to paths based on src or test dir
+      local targets=$(_normalize_targets "$@")
+
+      # replace '...' with recursive dir/*.go
+      local expanded=$(_expand_targets "/*.go" ${targets})
+
+      local cmd="gofmt -w"
+
+      # print what will be run
+      _print_cmd "FORMATTING" "$cmd" ${expanded}
+
+      # run the format
+      $cmd ${expanded}
+    }
 
 # License
 
