@@ -262,7 +262,7 @@ fi
 
 if [[ -z "${DEFAULT_PROJECT_WINDOWS}" || \
     ${#DEFAULT_PROJECT_WINDOWS} -eq 0 ]]; then
-  DEFAULT_PROJECT_WINDOWS="vim,bash"  # Comma separated list
+  DEFAULT_PROJECT_WINDOWS="vim,build"  # Comma separated list
 fi
 
 if [[ -z "${DEFAULT_PROJECT_TARGETS_IGNORE}" ]]; then
@@ -367,6 +367,19 @@ function sftpproj() {
   sftp ${host}
 }
 
+################################################################################
+# Project based vim
+#
+# Starts vim as follows:
+#   vim --servername ${PROJECT_NAME} -c ":Open :session $PROJECT_NAME"
+################################################################################
+function vimproj() {
+  if [[ $# -gt 0 ]]; then
+    vim --servername $PROJECT_NAME $*
+  else
+    vim --servername $PROJECT_NAME -c ":Open :session"
+  fi
+}
 
 ################################################################################
 # Project command.
@@ -488,7 +501,7 @@ function project() {
   elif [[ "${1}" == "sync" ]]; then
     _project_sync "${project_name}"
   elif [[ "${1}" == "refresh" ]]; then
-    pushd "${PROJECT_SRC}" &> /dev/null
+    pushd "${PROJECT_BUILD_DIR}" &> /dev/null
     build clean
     build :all
     popd &> /dev/null
@@ -2123,7 +2136,7 @@ function _project_sync() {
 ################################################################################
 # Helper function to normalize a list of target names used within a project.
 #
-# Example (assuming current dir is ${PROJECT_SRC_HOME}/start/here):
+# Example (assuming current dir is ${PROJECT_BUILD_DIR}/start/here):
 #   INPUT: foo ../bar ../baz:all :target
 #   OUTPUT: start/here/foo start/bar start/baz:all start/here:target
 #
@@ -2131,15 +2144,10 @@ function _project_sync() {
 #   $*: Named targets to search for relative to current dir.
 #
 # Returns:
-#   List of targets with dirs relative to ${PROJECT_SRC_DIR} or
-#   ${PROJECT_TEST_DIR}
+#   List of targets with dirs relative to ${PROJECT_BUILD_DIR}
 ################################################################################
 function _normalize_targets() {
-  base_dir="${PROJECT_SRC_DIR}"
-  if [[ "${PWD}" == "${PROJECT_TEST_DIR}"* ]]; then
-    base_dir="${PROJECT_TEST_DIR}"
-  fi
-
+  base_dir="${PROJECT_BUILD_DIR}"
   local matches=()
   for arg in $*; do
     local target="${arg}"
@@ -2231,40 +2239,45 @@ function _expand_pkgs() {
 #   $*: Named targets to search for relative to base src/test dir.
 #
 # Returns:
-#   List of targets with dirs relative to ${PROJECT_DIR},
-#     ${PROJECT_SRC_DIR}, or ${PROJECT_TEST_DIR}
+#   List of targets with dirs relative to ${PROJECT_BUILD_DIR}
 ################################################################################
 function _expand_targets() {
-  local base_dir="${PROJECT_SRC_DIR}"
-  if [[ "${PWD}" == "${PROJECT_TEST_DIR}"* ]]; then
-    base_dir="${PROJECT_TEST_DIR}"
-  fi
+  local base_dir="${PROJECT_BUILD_DIR}"
 
   local ext=${1}
   shift
 
   local expanded=()
   for target in "$@"; do
-    target=${target//.../}  # remove ... recursive indicator
-    if [[ -d "${base_dir}/${target}" ]]; then
-      for dir in $(find ${base_dir}/${target} -type d); do
-        local dir=${dir##${base_dir}/}
-        if [[ -z "${dir}" && "${ext}" == "/" ]]; then
-          local normalized_target=$(_normalize_path "${base_dir}/${dir}")
-        else
-          local normalized_target=$(_normalize_path "${base_dir}/${dir}${ext}")
-        fi
-        # Skip matches that should be ignored
-        if ! _is_target_ignored "${normalized_target}"; then
-          expanded+=("${normalized_target:${#base_dir} + 1}")
-        fi
-      done
-    else
+    if [[ "${target}" != *...* ]]; then
       # Simplify the target names to remove ../ paths
       local normalized_target=$(_normalize_path "${base_dir}/${target}")
       # Skip matches that should be ignored
       if ! _is_target_ignored "${normalized_target}"; then
         expanded+=("${normalized_target:${#base_dir} + 1}")
+      fi
+    else
+      target=${target//.../}  # remove ... recursive indicator
+      if [[ -d "${base_dir}/${target}" ]]; then
+        for dir in $(find ${base_dir}/${target} -type d); do
+          local dir=${dir##${base_dir}/}
+          if [[ -z "${dir}" && "${ext}" == "/" ]]; then
+            local normalized_target=$(_normalize_path "${base_dir}/${dir}")
+          else
+            local normalized_target=$(_normalize_path "${base_dir}/${dir}${ext}")
+          fi
+          # Skip matches that should be ignored
+          if ! _is_target_ignored "${normalized_target}"; then
+            expanded+=("${normalized_target:${#base_dir} + 1}")
+          fi
+        done
+      else
+        # Simplify the target names to remove ../ paths
+        local normalized_target=$(_normalize_path "${base_dir}/${target}")
+        # Skip matches that should be ignored
+        if ! _is_target_ignored "${normalized_target}"; then
+          expanded+=("${normalized_target:${#base_dir} + 1}")
+        fi
       fi
     fi
   done

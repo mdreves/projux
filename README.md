@@ -404,6 +404,9 @@ A basic workflow might be as follows:
     sftpproj
       sftp $PROJECT_HOST
 
+    vimproj
+      vim --servername $PROJECT_NAME -c ":Open :session"
+
     cdproject
       cd $PROJECT_DIR
 
@@ -672,9 +675,9 @@ A basic workflow might be as follows:
 
     _normalize_targets <targets>
       Converts a list of targets relative to cur directory to names relative
-      to the base source or test directory.
+      to the build directory.
 
-      Example (assuming cur dir /home/dude/proj/src/a):
+      Example (assuming cur dir /home/dude/proj/a):
         $ normalized=$(_normalize_targets a1 ../b/...)
         $ echo $normalized
         a/a1 b/...
