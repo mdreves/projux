@@ -285,6 +285,10 @@ if [[ -z "${DEFAULT_PROJECT_SYNC_DESTS}" ]]; then
   DEFAULT_PROJECT_SYNC_DESTS="~"
 fi
 
+if [[ -z "${DEFAULT_PROJECT_FORMAT_FN}" ]]; then
+  DEFAULT_PROJECT_FORMAT_FN="default_format"
+fi
+
 if [[ -z "${PROXY_CMDS}" ]]; then
   PROXY_CMDS=true  # Proxy cmds to project host if run locally
 fi
@@ -348,7 +352,7 @@ alias opencoverage='open $(geturl coverage)'
 ################################################################################
 # SSH to project host
 ################################################################################
-function sshproj() {
+function pssh() {
   host=${PROJECT_HOST-DEFAULT_PROJECT_HOST}
   if _is_project_local; then
     host=${DEFAULT_PROJECT_HOST}
@@ -359,7 +363,7 @@ function sshproj() {
 ################################################################################
 # SFTP to project host
 ################################################################################
-function sftpproj() {
+function psftp() {
   host=${PROJECT_HOST-DEFAULT_PROJECT_HOST}
   if _is_project_local; then
     host=${DEFAULT_PROJECT_HOST}
@@ -373,7 +377,7 @@ function sftpproj() {
 # Starts vim as follows:
 #   vim --servername ${PROJECT_NAME} -c ":Open :session $PROJECT_NAME"
 ################################################################################
-function vimproj() {
+function pvim() {
   if [[ $# -gt 0 ]]; then
     vim --servername $PROJECT_NAME $*
   else
@@ -539,7 +543,7 @@ function project() {
       fi
     else
       # Currently attached, switch projects
-      env_vars=$(_project_vars "${project_name}")
+      env_vars=$(_project_vars "${project_name}" 1)
       # Always set projects vars before cmd (may be a project specific host set)
       eval "${env_vars} _project_attach ${project_name} ${instance}"
     fi
@@ -688,12 +692,24 @@ function search() {
 # PROJECT_FORMAT_FN environment variable (set in ~/.projects) or
 # DEFAULT_PROJECT_FORMAT_FN (set in ~/.bashrc).
 #
+# Any function implementation should support the ability to pass either
+# stdin to be formatted or a list of files. When no args are passed a
+# default list of targets from PROJECT_DEFAULT_FORMAT_TARGETS can be used.
+#
+# When stdin is used the environment varible FILE_TYPE can be set to
+# provide a hint about how to format the output. If not set the PROJECT_TYPE
+# will be used.
+#
 # Examples:
-#   format             # default targets (e.g. DEFAULT_PROJECT_FORMAT_TARGETS)
-#   format ...         # format recursively from current dir
-#   format -p xxx ...  # format recursively in project xxx
+#   cat foo.cc | format  # format stdin
+#   format               # default targets (e.g. DEFAULT_PROJECT_FORMAT_TARGETS)
+#   format foo.cc        # format specific file
+#   format ...           # format recursively from current dir
+#   format -p xxx ...    # format recursively in project xxx
 #   VERBOSE=0 format
 #   DRY_RUN=true format
+#   # provide hint that filetype is go for stdin
+#   FILE_TYPE=go cat foo | format
 #
 # Args:
 #   target (optional): Target.
@@ -716,6 +732,70 @@ function format() {
 
   local cmd="$PROJECT_FORMAT_FN $@"
   eval "$cmd"
+}
+
+################################################################################
+# Default format function (supports gofmt, clang-format).
+################################################################################
+function default_format() {
+  # Stdin passed, process directly
+  if [[ ! -t 0 ]]; then
+    local file_type=${FILE_TYPE}
+    if [[ -z "${file_type}" ]]; then
+      local file_type=${PROJECT_TYPE}
+    fi
+    local file_type=$(_get_ext ${file_type})
+    if [[ "${file_type}" == "go" ]]; then
+      gofmt $*
+    elif [[ "${file_type}" == "c" || "${file_type}" == "cpp" || \
+            "${file_type}" == "m" ]]; then
+      clang-format $*
+    else
+      return 1
+    fi
+    return $?
+  fi
+
+  # Non-stdin formatting should be run on files on project host
+  if [[ $(hostname) != "${PROJECT_HOST}" ]]; then
+    echo "$(tput setaf 1)NOT PROJECT HOST!$(tput sgr0)"
+    return 1
+  fi
+
+  # disable globbing or else we will get big list of files when expanding
+  set -f
+
+  if [[ $# -gt 0 ]]; then
+    local targets=$(_normalize_targets "$@")
+  else
+    local targets=$(_normalize_targets ${PROJECT_DEFAULT_FORMAT_TARGETS})
+  fi
+  local targets=$(_expand_targets "/" ${targets})
+
+  pushd "${PROJECT_BUILD_DIR}" $> /dev/null
+
+  if [[ -z "${VERBOSE}" || ${VERBOSE} -ne 0 ]]; then
+    _print_cmd "FORMATTING" "format" ${targets}
+  fi
+
+  # re-enable globbing
+  set +f
+
+  if ! ${DRY_RUN-false}; then
+    for t in ${targets}; do
+      if [ -d "${t}" ]; then t="${t}/*"; fi
+      for f in ${t}; do
+        if [[ "${f}" == *".go" ]]; then
+          gofmt -w "${f}" &> /dev/null
+        elif [[ "${f}" == *".m" || "${f}" == *".c" || "${f}" == *".cc" || \
+                "${f}" == *".cpp" || "${f}" == *".h" ]]; then
+          clang-format -i "${f}" &> /dev/null
+        fi
+      done
+    done
+  fi
+
+  popd &> /dev/null
 }
 
 ################################################################################
@@ -1697,7 +1777,7 @@ function _project_ls() {
 #
 # Args:
 #   $1: Project name
-#   $* (optional): Space separated list of names of vars to return
+#   $2 (optional): 1 to not expand paths
 ################################################################################
 function _project_vars() {
   local project_name="${1}"
@@ -1770,17 +1850,19 @@ function _project_vars() {
     fi
   done < ~/.projects
 
-  if [[ found_format -eq 0 ]]; then
-    vars+=("PROJECT_DEFAULT_FORMAT_TARGETS=$(_expand_pkgs 3)")
-  fi
-  if [[ found_lint -eq 0 ]]; then
-    vars+=("PROJECT_DEFAULT_LINT_TARGETS=$(_expand_pkgs 3)")
-  fi
-  if [[ found_build -eq 0 ]]; then
-    vars+=("PROJECT_DEFAULT_BUILD_TARGETS=$(_expand_pkgs 3)")
-  fi
-  if [[ found_teset -eq 0 ]]; then
-    vars+=("PROJECT_DEFAULT_TEST_TARGETS=$(_expand_pkgs 2)")
+  if [[ -z "${2}" || ${2} -eq 0 ]]; then
+    if [[ found_format -eq 0 ]]; then
+      vars+=("PROJECT_DEFAULT_FORMAT_TARGETS=$(_expand_pkgs 3)")
+    fi
+    if [[ found_lint -eq 0 ]]; then
+      vars+=("PROJECT_DEFAULT_LINT_TARGETS=$(_expand_pkgs 3)")
+    fi
+    if [[ found_build -eq 0 ]]; then
+      vars+=("PROJECT_DEFAULT_BUILD_TARGETS=$(_expand_pkgs 3)")
+    fi
+    if [[ found_teset -eq 0 ]]; then
+      vars+=("PROJECT_DEFAULT_TEST_TARGETS=$(_expand_pkgs 2)")
+    fi
   fi
 
   echo "${vars[@]}"
@@ -1798,7 +1880,7 @@ function _project_var() {
   local var_name="${2}"
   # All project vars are passed prior to request specific var so that we can
   # fully resolve vars made up of other vars
-  local project_vars=$(_project_vars "${project_name}")
+  local project_vars=$(_project_vars "${project_name}" 1)
   val=$(eval "${project_vars} eval echo '$""${var_name}""'")
   echo "${val}"
 }
@@ -1813,7 +1895,7 @@ function _project_settings() {
   local project_name="${1}"
   local found=0
   local padding="                             "
-  local project_vars=$(_project_vars ${project_name})
+  local project_vars=$(_project_vars ${project_name} 1)
   local vars_echoed=()
   while read line; do
     if [[ "${line}" == "PROJECT_NAME=${project_name}" ]]; then
@@ -2543,6 +2625,33 @@ local sep="\
   done
   echo "${next:0:${#next}-2}"
   echo "${sep}$(tput sgr0)"
+}
+
+################################################################################
+# Gets file extension associated with file type or project type.
+################################################################################
+function _get_ext() {
+  if [[ "${1}" == "python" ]]; then
+    echo "py"
+  else
+    echo "${1}"
+  fi
+}
+
+################################################################################
+# Trims whitespace from a variable
+#
+# Args:
+#   $1: variable to trim
+#
+# Returns:
+#   Variable with leading and trailing whitespace removed.
+################################################################################
+function _trim() {
+  local var=$1
+  var="${var#"${var%%[![:space:]]*}"}"   # remove leading whitespace
+  var="${var%"${var##*[![:space:]]}"}"   # remove trailing whitespace
+  echo -n "$var"
 }
 
 ################################################################################

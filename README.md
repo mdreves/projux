@@ -398,13 +398,13 @@ A basic workflow might be as follows:
         sanity -p foo          :  Run sanity on project foo
 
 ## Misc
-    sshproj
+    pssh
       ssh -Y -t $PROJECT_HOST
 
-    sftpproj
+    psftp
       sftp $PROJECT_HOST
 
-    vimproj
+    pvim
       vim --servername $PROJECT_NAME -c ":Open :session"
 
     cdproject
