@@ -61,7 +61,7 @@ Installation is straight forward:
 
 A basic workflow might be as follows:
 
-* Setup project's enviroment variables and aliases:
+  - Setup project's enviroment variables and aliases:
 
         $ vi ~/.projects
 
@@ -79,7 +79,7 @@ A basic workflow might be as follows:
     `PROJECT_NAME` up to the next `PROJECT_NAME` entry will be loaded whenever
     the `project <project_name>` command is used.
 
-* Setup project sync list and synchronize local/remote hosts
+  - Setup project sync list and synchronize local/remote hosts
 
         $ vi ~/.projectsync
 
@@ -88,16 +88,16 @@ A basic workflow might be as follows:
 
         $ project sync overthere
 
-* Attach to remote project
+  - Attach to remote project
 
         $ project attach foo
 
     NOTE: By default this will attach to the first TMUX window listed in
     `DEFAULT_PROJECT_WINDOWS` with a TMUX session named after the project.
 
-* Hack in vim, etc
+  - Hack in vim, etc
 
-* Open a second terminal session to project
+  - Open a second terminal session to project
 
         $ project attach foo 2
 
@@ -105,7 +105,7 @@ A basic workflow might be as follows:
     `DEFAULT_PROJECT_WINDOWS` with a TMUX session named after the project
     but with `_2` append (e.g. `foo_2`).
 
-* In second terminal window `build`, `test`, ...
+  - In second terminal window `build`, `test`, ...
 
         $ format
         $ lint
@@ -113,39 +113,39 @@ A basic workflow might be as follows:
         $ test
         ...
 
-* Switch first terminal session to another project
+  - Switch first terminal session to another project
 
         $ project bar
 
-* Hack in vim in new project
+  - Hack in vim in new project
 
-* Switch to second terminal session of new project
+  - Switch to second terminal session of new project
 
         $ project bar 2
         $ build
 
-* Temporarily update tests to a specific test
+  - Temporarily update tests to a specific test
 
         $ settest bar_test
         $ test
 
-* Reload original project settings
+  - Reload original project settings
 
         $ project bar 2
 
-* Switch first terminal back to first project...
+  - Switch first terminal back to first project...
 
         $ project foo
 
-* Detach from terminal 1
+  - Detach from terminal 1
 
         $ project detach
 
-* Reattach right where we left off...
+  - Reattach right where we left off...
 
         $ project attach foo
 
-...
+  - ...
 
 # Commands
 
@@ -171,7 +171,7 @@ A basic workflow might be as follows:
 
       Examples:
         project attach foo     :  Attach/switch to foo project
-        project attach 2       :  Attach/switch to 2nd session for current project
+        project attach 2       :  Attach/switch to 2nd session for project
         project attach foo 3   :  Attach/switch to 3rd session for project foo
 
     $ project detach [<project>] [<session>]
@@ -181,7 +181,7 @@ A basic workflow might be as follows:
       Examples:
         project detach         :  Detach current client from cur project
         project detach foo     :  Detach all clients attached to foo project
-        project detach foo 2   :  Detach all clients attached to 2nd session to foo
+        project detach foo 2   :  Detach all clients attached to 2nd foo session
 
     $ project kill [<project>] [<session>]
 
@@ -324,7 +324,7 @@ A basic workflow might be as follows:
 ## coverage
     $ coverage [-p <project>] <targets>
 
-      Runs project specific coverage based on $PROJECT_COVERAGE_FN implementation.
+      Runs project specific coverage based on $PROJECT_COVERAGE_FN impl.
 
       Examples:
         coverage               :  Coverage DEFAULT_PROJECT_TEST_TARGETS targets
