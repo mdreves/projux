@@ -42,12 +42,12 @@ Installation is straightforward:
     hosting all projects on a single server) or per project `PROJECT_HOST` vars
     in `~/.projects` (if different projects have different servers).
 
-4a. Manually
+    a) Manually
 
     To setup manually, copy the `~/.projux` dir and `~/.projects` file to the
     remote host(s) and setup the remote `~/.bashrc` file as per step 2 and 4.
 
-4b. Using sync
+    b) Using sync
 
     If all the projects are hosted on a single development server, then in
     addition to the `DEFAULT_PROJECT_HOST` variable set in `~/.bashrc`, add
@@ -665,7 +665,7 @@ specified using the following form:
 The <key> and <value> settings depend on the type of environment variable.
 There are three main types that use this format:
 
-1. Project Windows
+1 Project Windows
 
 In this case the <key> is the window name and the <value> is the command to
 use when launching the window. For example to launch bash in a 'vim' window
@@ -675,7 +675,7 @@ and scala in a 'repl' window:
             vim::bash; stty -ixon \   # tmux new-window -d vim 'bash; stty-ixon'
             repl::scala"              # tmux new-window -d vim 'scala'
 
-2. Environment Variables with Commands Per File Type
+2 Environment Variables with Commands Per File Type
 
 In this case the <key> is a colon separated list of file extensions and the
 <value> is the command(s) to use on files of those types. For example, for
@@ -696,7 +696,7 @@ example, to run javacheck on *.java and both golint and govet on *.go files:
             java::javacheck <targets> \
             go::golint <targets>; govet <targets>"
 
-3. Environment Variables with Selectable Commands
+3 Environment Variables with Selectable Commands
 
 In this case the <key> represents a name that can be used to select from
 one or more commands. When the associated call is made the key is passed
@@ -723,9 +723,10 @@ are associated with the selected command.
 
 ### Defaults
 
-An environment variable XXX can have a default called DEFAULT_XXX. The
-DEFAULT_XXX value is used when a project does not set a specific XXX value.
-XXX variables are set in ~/.projects while DEFAULT_XXX are set in ~/.bashrc.
+An environment variable `XXX` can have a default called `DEFAULT_XXX`. The
+`DEFAULT_XXX` value is used when a project does not set a specific `XXX` value.
+`XXX` variables are set in `~/.projects` while `DEFAULT_XXX` are set in
+`~/.bashrc`.
 
 ## General Project Settings
     PROJECT_NAME (required)
@@ -931,7 +932,7 @@ XXX variables are set in ~/.projects while DEFAULT_XXX are set in ~/.bashrc.
 
 Some projects may have their own selectable commands that fall outside of
 the built-in run, search, package, etc. Projux provides a helper function to
-implement these using the __projux_select_cmd function. For example, given the
+implement these using the `__projux_select_cmd` function. For example, given the
 following:
 
       function update() {
@@ -939,13 +940,13 @@ following:
         __projux_select_cmd "PROJECT_UPDATE_CMDS" "UPDATING" $*
       }
 
-A project can now create a PROJECT_UPDATE_CMDS variable similar to
-PROJECT_RUN_CMDS that allows this new 'update' command to be called while
+A project can now create a `PROJECT_UPDATE_CMDS` variable similar to
+`PROJECT_RUN_CMDS` that allows this new `update` command to be called while
 passing labels and flags to select the bash command that is ultimately invoked.
 
 # License
 
-Copyright 2012-2013 Mike Dreves
+Copyright 2012 - 2013 Mike Dreves
 
 All rights reserved. This program and the accompanying materials
 are made available under the terms of the Eclipse Public License v1.0
