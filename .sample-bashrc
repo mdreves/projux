@@ -1,0 +1,51 @@
+################################################################################
+# Copyright 2012-2013 Mike Dreves
+#
+# All rights reserved. This program and the accompanying materials
+# are made available under the terms of the Eclipse Public License v1.0
+# which accompanies this distribution, and is available at:
+#
+#  http://opensource.org/licenses/eclipse-1.0.php
+#
+# By using this software in any fashion, you are agreeing to be bound
+# by the terms of this license. You must not remove this notice, or any
+# other, from this software. Unless required by applicable law or agreed
+# to in writing, software distributed under the License is distributed
+# on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+# either express or implied.
+################################################################################
+
+alias tmux='TERM=screen-256color-bce tmux -2'  # enable 256 color support
+
+...
+
+if [ -f ~/.projux/.projuxrc ] ; then
+  export PROJUX_ALIASES=1
+  export DEFAULT_PROJECT_WINDOWS="\
+      vim::bash; stty -ixon \
+      build::bash; stty -ixon \
+      bash::bash; stty -ixon \
+      vim_2::bash; stty -ixon \
+      repl::scala"
+  export DEFAULT_PROJECT_EXCLUDE_FILTER="*tmp/*:*backup/*"
+  export DEFAULT_PROJECT_FORMAT_CMDS="\
+      c:cc:cpp:h::clang-format -i <targets> \
+      go::gofmt -tabs=false -tabwidth=2 -w <targets>"
+  export DEFAULT_PROJECT_LINT_CMDS="\
+      py::pylint <targets> \
+      go::golint <targets>; govet <targets>"
+  export DEFAULT_PROJECT_COMPILE_CMDS="\
+      scala::scalac <targets> \
+      java::javac <targets> \
+      cc::clang++ -std=c++11 -stdlib=libc++ -W <targets> \
+      go::go <targets>"
+  export DEFAULT_PROJECT_TEST_CMDS="\
+      scala::sbt test <targets>"
+  export DEFAULT_PROJECT_CLEAN_CMDS="sbt clean"
+  export DEFAULT_PROJECT_PACKAGE_CMDS="sbt package"
+  export DEFAULT_PROJECT_GENDOCS_CMDS="sbt doc"
+  export DEFAULT_PROJECT_SHARE_DIR="~/Public"
+  export DEFAULT_BACKUP_DIR="~/Workspace/backups"
+
+  . ~/.projux/.projuxrc
+fi

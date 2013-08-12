@@ -1,0 +1,406 @@
+###############################################################################
+# Copyright 2012-2013 Mike Dreves
+#
+# All rights reserved. This program and the accompanying materials
+# are made available under the terms of the Eclipse Public License v1.0
+# which accompanies this distribution, and is available at:
+#
+#  http://opensource.org/licenses/eclipse-1.0.php
+#
+# By using this software in any fashion, you are agreeing to be bound
+# by the terms of this license. You must not remove this notice, or any
+# other, from this software. Unless required by applicable law or agreed
+# to in writing, software distributed under the License is distributed
+# on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+# either express or implied.
+###############################################################################
+
+###############################################################################
+# Projux
+# -----------------------------------------------------------------------------
+#
+# See function comments and ~/.projects for examples of features.
+#
+# Recursive Targets:
+# -------------------
+# The characters '...' following a directory target means the directory and all
+# sub-directores recursively. For example, 'build a/...' means build the
+# a/ directory and all its sub-directories.
+#
+# Keywords:
+# -------------------
+# By convention, keyword flags are # prefixed with ':' (e.g.
+# 'geterrors :build').
+#
+# Key/Value Maps:
+# -------------------
+# Some environment variables take a map of key/value settings. The settings are
+# specified using the following form:
+#
+#   <key>::<value> <key>::<value> ...
+#
+# The <key> and <value> settings depend on the type of environment variable.
+# There are three main types that use this format:
+#
+# 1) Project Windows
+#
+#   In this case the <key> is the window name and the <value> is the
+#   command to use when launching the window. For example to launch bash in
+#   a 'vim' window and scala in a 'repl' window:
+#
+#   PROJECT_WINDOWS="\
+#     vim::bash; stty -ixon \   # tmux new-window -d vim 'bash; stty-ixon'
+#     repl::scala"              # tmux new-window -d vim 'scala'
+#
+# 2) Environment Variables with Commands Per File Type
+#
+#   In this case the <key> is a colon separated list of file extensions and the
+#   <value> is the command(s) to use on files of those types. For example, for
+#   the PROJECT_FORMAT_CMDS we could use the following to run clang-format on
+#   files of type *.{cc,h} and gofmt on files of type *.go, use:
+#
+#   PROJECT_FORMAT_CMDS="\
+#       cc:h::clang-format -i <targets> \
+#       go::gofmt -tabs=false -tabwidth=2 -w <targets>"
+#
+#   In this case the keywords <args> will be replaced with the args as passed
+#   while <target> will be replaced with the expanded targets per file type.
+#
+#   Multiple commands can be run at once by separating them with ';'. For
+#   example, to run javacheck on *.java and both golint and govet on *.go files:
+#
+#   PROJECT_LINT_CMDS="\
+#       java::javacheck <targets> \
+#       go::golint <targets>; govet <targets>"
+#
+# 3) Environment Variables with Selectable Commands
+#
+#   In this case the <key> represents a name that can be used to select from
+#   one or more commands. When the associated call is made the key is passed
+#   and the commmand(s) associated with that key is run. If no key is provided
+#   then the first command listed is used.
+#
+#   PROJECT_RUN_CMDS="\
+#      client::client -server=localhost:1234 -data=a,b \
+#      server::server -port=1234"
+#
+#   $ run client    # runs client -server=localhost:1234 -data=a,b
+#   $ run server    # runs server -port=1234
+#   $ run           # runs client -server=localhost:1234 -data=a,b
+#
+#
+# Selectable Commands:
+# -------------------
+# As mentioned, selectable commands allow you to select from one or more
+# commands based on a key:: tag. However, you can also modify the flags that
+# are associated with the selected command.
+#
+#   $run server --port=5678       # runs 'server -port=5678'
+#   $run client --data=+c         # runs 'server -port=1234 -data=a,b,c'
+#   $run client --data=-b,+e      # runs 'server -port=1234 -data=a,e'
+#
+#
+# Defaults:
+# -------------------
+# An environment variable XXX can have a default called DEFAULT_XXX. The
+# DEFAULT_XXX value is used when a project does not set a specific XXX value.
+# XXX variables are set in ~/.projects while DEFAULT_XXX are set in ~/.bashrc.
+#
+#
+# -----------------------------------------------------------------------------
+# Basic Variables:
+# -----------------------------------------------------------------------------
+#   PROJECT_NAME (required)
+#     Project name.
+#
+#   PROJECT_HOST / DEFAULT_PROJECT_HOST
+#     Server project should be built/run/etc from (localhost, myserver, etc).
+#
+#   PROJECT_WINDOWS / DEFAULT_PROJECT_WINDOWS
+#     Map of tmux windows. The keys are window names and the values are
+#     commands to use when the window is opened (see overview).
+#     (e.g. "bash::bash; stty -ixon repl::python").
+#
+#   PROJECT_DIR (required)
+#     Main project directory.
+#
+#   PROJECT_SRC_DIR (required)
+#     Source directory for project (e.g. $PROJECT_DIR/src).
+#
+#   PROJECT_TEST_DIR (required)
+#     Test directory for project (e.g. $PROJECT_DIR/test).
+#
+#   PROJECT_TARGET_DIR (required)
+#     Directory for build (lint/build) output (e.g. $PROJECT_DIR/target).
+#
+#   PROJECT_BIN_DIR (required)
+#     Directory executable program(s) are output to (e.g.
+#     $PROJECT_TARGET_DIR/bin). PROJECT_RUN_CMDS are relative to this
+#     directory.
+#
+#   PROJECT_GEN_DIR (required if cdgen used)
+#     Directory generated code output to (e.g. $PROJECT_TARGET_DIR/gen).
+#
+#   PROJECT_PKGS (required)
+#     List of main packages used by project (e.g. "com/example1 com/example2").
+#     These are directories that should exist in the PROJECT_SRC_DIR and/or
+#     PROJECT_TEST_DIR. Default is all directories under source and test dirs.
+#
+#   PROJECT_INCLUDE_FILTER / DEFAULT_PROJECT_INCLUDE_FILTER (required)
+#     Colon separated list of patterns for files that should be considered part
+#     of the project (for example, make:*.scala:*.java:*.go:*.{c,cc,h}). When
+#     format, lint, build, test, etc are run, these files are searched for in
+#     the PROJECT_SRC_DIR and/or PROJECT_TEST_DIR directories. Multiple file
+#     types may be specified even though only some operations are supported on
+#     some files (e.g. lint may only be supported for *.java and although
+#     *.scala may be included in the filter, lint will only be run for java).
+#     It is best to group files together that go together (e.g. *.{c,cc,h} vs
+#     *.c:*.cc:*.h). This setting is required.
+#
+#   PROJECT_EXCLUDE_FILTER / DEFAULT_PROJECT_EXCLUDE_FILTER
+#     Colon separated list of patterns for files that should be NOT be
+#     considered part of the project (for example, Foo.scala:Bar.java). If these
+#     files exist in the PROJECT_SRC_DIR or PROJECT_TEST_DIR they will be
+#     ignored.
+#
+#   PROJECT_BUG
+#     Current bug ID for work being done in project.
+#
+# -----------------------------------------------------------------------------
+# Variables for Selectable Commands:
+# -----------------------------------------------------------------------------
+#   PROJECT_RUN_CMDS / DEFAULT_PROJECT_RUN_CMDS
+#     Command(s) to use when run called. A single command can be specified or a
+#     map of commands can used by labelling them as <key>::<cmd>
+#     (e.g. clien::client -server=localhost:1234 server::server -port=1234).
+#
+#   PROJECT_CLEAN_CMDS / DEFAULT_PROJECT_CLEAN_CMDS
+#     Command(s) to use when clean called. A single command can be specified or
+#     a map of commands can used by labelling them as <key>::<cmd>
+#     (e.g. sbt clean).
+#
+#   PROJECT_PACKAGE_CMDS / DEFAULT_PROJECT_PACKAGE_CMDS
+#     Command(s) to use when package called. A single command can be specified
+#     or a map of commands can used by labelling them as <key>::<cmd>
+#     (e.g. sbt package).
+#
+#   PROJECT_DEPLOY_CMDS / DEFAULT_PROJECT_DEPLOY_CMDS
+#     Command(s) to use when deploy called. A single command can be specified or
+#     a map of commands can used by labelling them as <key>::<cmd>
+#     (e.g. frontend::ant deploy-fe backend::ant deploy-be).
+#
+#   PROJECT_GENDOCS_CMDS / DEFAULT_PROJECT_GENDOCS_CMDS
+#     Command(s) to use when gendocs called. A single command can be specified
+#     or a map of commands can used by labelling them as <key>::<cmd>
+#     (e.g. scala::sbt doc go::godocs --http=:6060).
+#
+#   PROJECT_SEARCH_CMDS / DEFAUT_PROJECT_SEARCH_CMDS
+#     Command(s) to use when search called. A single command can be specified
+#     or a map of commands can used by labelling them as <key>::<cmd>
+#     (e.g. default::mysearch -src=${PROJECT_SRC_DIR}).
+#
+# -----------------------------------------------------------------------------
+# Variables for Commands Based on File Types:
+# -----------------------------------------------------------------------------
+#   PROJECT_FORMAT_CMDS / DEFAULT_PROJECT_FORMAT_CMDS
+#     Map of commands to run when formatting project files. The map should
+#     have the form: <file_ext>:...<file_ext>::<cmd>;...;<cmd> ...
+#     (e.g. "cc:h::clang-format -i <targets> go::gofmt -w <targets>")
+#
+#   PROJECT_LINT_CMDS / DEFAULT_PROJECT_LINT_CMDS
+#     Map of commands to run when linting project files. The map should
+#     have the form: <file_ext>:...<file_ext>::<cmd>;...;<cmd> ...
+#     (e.g. "cc:h::clint <targets> go::golint <targets>; govet <targets>")
+#
+#   PROJECT_BUILD_CMDS / DEFAULT_PROJECT_BUILD_CMDS
+#     Map of commands to run when compling project files. The map should
+#     have the form: <file_ext>:...<file_ext>::<cmd>;...;<cmd> ...
+#     (e.g. "cc:h::make scala::scalac <targets> java::javac <targets>")
+#
+#   PROJECT_TEST_CMDS / DEFAULT_PROJECT_TEST_CMDS
+#     Map of commands to run when testing project files. The map should
+#     have the form: <file_ext>:...<file_ext>::<cmd>;...;<cmd> ...
+#     (e.g. "scala::sbt test <args>")
+#
+#   PROJECT_COVERAGE_CMDS / DEFAULT_PROJECT_COVERAGE_CMDS
+#     Map of commands to show code coverage of project tests. The map should
+#     have the form: <file_ext>:...<file_ext>::<cmd>;...;<cmd>,...
+#     (e.g. "rb::coverage <args>")
+#
+#   PROJECT_TEST_SUFFIXES / DEFAULT_PROJECT_TEST_SUFFIXES
+#     Map of suffixes used on test related files. This is used to distinguish
+#     source and test files when they reside in the same directory. The map
+#     should have the form: <file_ext>:...<file_ext>::<suffix> ...
+#     (e.g. "cc::_test")
+#
+#   PROJECT_TEST_TARGETS
+#     Override for test/coverate include filters. When set
+#     PROJECT_INCLUDE_FILTER is set to PROJECT_TEST_TARGETS before test or
+#     coverage is called. When not set, then PROJECT_INCLUDE_FILTER is used as
+#     set. This is used with the settest, etc functions to allow configuring
+#     a small subset of test to run multiple times during development.
+#
+# -----------------------------------------------------------------------------
+# Variables for Custom Implementations:
+# -----------------------------------------------------------------------------
+#   PROJECT_FORMAT_FN / DEFAULT_PROJECT_FORMAT_FN
+#     Name of custom 'format' function implementation.
+#
+#   PROJECT_LINT_FN / DEFAULT_PROJECT_LINT_FN
+#     Name of custom 'lint' function implementation.
+#
+#   PROJECT_BUILD_FN / DEFAULT_PROJECT_BUILD_FN
+#     Name of custom 'build' function implementation.
+#
+#   PROJECT_TEST_FN / DEFAULT_PROJECT_TEST_FN
+#     Name of custom 'test' function implementation.
+#
+#   PROJECT_COVERAGE_FN / DEFAULT_PROJECT_COVERAGE_FN
+#     Name of custom 'coverage' function implementation.
+#
+#   PROJECT_GETERRORS_FN / DEFAULT_PROJECT_GETERRORS_FN
+#     Name of custom 'geterrors' function implementation.
+#     Errors should be echoed as lines of: <file>:<line>:<col>:<message>.
+#     See geterrors function for more information.
+#
+#   PROJECT_GETURL_FN / DEFAULT_PROJECT_GETURL_FN
+#     Name of custom 'geturl' function implementation.
+#
+#   PROJECT_SANITY_FN / DEFAULT_PROJECT_SANITY_FN
+#     Name of custom 'santity' function implementation.
+#
+# -----------------------------------------------------------------------------
+# Variables for Sharing/Syncing/Backup:
+# -----------------------------------------------------------------------------
+#   PROJECT_SHARE_DIR / DEFAULT_PROJECT_SHARE_DIR
+#     This variable is set to the directory to use for copying executables
+#     for sharing publically (e.g. ~/Public).
+#
+#   PROJECT_BACKUP_DIR / DEFAULT_PROJECT_BACKUP_DIR
+#     This variable is set to the directory to use for project backups when
+#     the 'project backup' command is used.
+#
+#   PROJECT_SYNC_LIST / DEFAULT_PROJECT_SYNC_LIST
+#     This variable is set to the name of a file containing a list of files
+#     that should be synchronized from the local host to the project host
+#     when using 'project sync' command. Listed files are specified relative
+#     to the local home directory. The DEFAULT_PROJECT_SYNC_LIST is by default
+#     set to ~/.projectsync which contains ~/.projects.
+#
+#   PROJECT_SYNC_DESTS / DEFAULT_PROJECT_SYNC_DESTS
+#     Comma separated list of directories to sync files to on remote host.
+#
+# -----------------------------------------------------------------------------
+# Misc Variables:
+# -----------------------------------------------------------------------------
+#   PROJUX_ALIASES
+#     Set to true to add projux related aliases (cdsrc, etc).
+#
+#   PROJUX_CMDS
+#     Set to true to add projux related commands (format, lint, etc).
+#
+#   PROXY_CMDS
+#     Set to true to proxy commands to remote host when running locally.
+#
+#   VERBOSE
+#     Some commands take a VERBOSE environment variable. This is a level setting
+#     not on/off. Level 0 effectively means off which is different than most
+#     flags in bash where 0 is success). Many commands do not support verbose
+#     output yet, so don't expect much.
+#
+#   DRY_RUN
+#     The dry run flag will print the command that will execute, but not
+#     actualy execute it. This is a true/false settings (e.g. DRY_RUN=true)
+#
+# -----------------------------------------------------------------------------
+# Common local (per command) Variables/Flags:
+# -----------------------------------------------------------------------------
+#   -p <project>[:<win>]
+#     Some commands accept a -p flag to specify the project to run the command
+#     against. If used, this must come before other cmd args. When used the
+#     current project will not be changed, instead the command will be sent over
+#     tmux to the project window specified with :<win> (or the first window if
+#     :<win> not specified).
+################################################################################
+
+################################################################################
+# Default Variables
+################################################################################
+
+if [[ -z "${DEFAULT_PROJECT_HOST}" ]]; then
+  DEFAULT_PROJECT_HOST=$(hostname)  # Use local project host if not set
+fi
+
+if [[ -z "${DEFAULT_PROJECT_WINDOWS}" ]]; then
+  DEFAULT_PROJECT_WINDOWS="\
+     vim::bash; stty -ixon \
+     build::bash; stty -ixon"
+fi
+
+if [[ -z "${DEFAULT_PROJECT_SHARE_DIR}" ]]; then
+  DEFAULT_PROJECT_SHARE_DIR="~/Public"
+fi
+
+if [[ -z "${DEFAULT_PROJECT_BACKUP_DIR}" ]]; then
+  DEFAULT_PROJECT_BACKUP_DIR="~/backups"
+fi
+
+if [[ -z "${DEFAULT_PROJECT_SYNC_LIST}" ]]; then
+  DEFAULT_PROJECT_SYNC_LIST="${HOME}/.projectsync"
+fi
+
+if [[ -z "${DEFAULT_PROJECT_SYNC_DESTS}" ]]; then
+  DEFAULT_PROJECT_SYNC_DESTS="~"
+fi
+
+PROJUX_SCRIPT_DIR=$(\
+  pushd $(dirname ${BASH_SOURCE[0]}) 2&> /dev/null && \
+  pwd; popd 2&> /dev/null)
+
+################################################################################
+# Aliases
+################################################################################
+
+if [[ ${PROJUX_ALIASES-true} -eq 0 ]]; then
+  . ${PROJUX_SCRIPT_DIR}/.projux_aliases
+fi
+
+################################################################################
+# Builtins
+################################################################################
+
+. ${PROJUX_SCRIPT_DIR}/.projux_builtins
+
+################################################################################
+# Commands
+################################################################################
+
+if [[ ${PROJUX_CMDS-true} -eq 0 ]]; then
+  . ${PROJUX_SCRIPT_DIR}/.projux_cmds
+fi
+
+################################################################################
+# Help
+################################################################################
+
+function __projux_print_help {
+  if [[ ${PROJUX_ALIASES-true} -eq 0 ]]; then
+    __projux_print_aliases
+  fi
+  __projux_print_builtins
+
+  if [[ ${PROJUX_CMDS-true} -eq 0 ]]; then
+    __projux_print_cmds
+  fi
+}
+
+################################################################################
+# Init
+################################################################################
+
+# If a tmux session exists it should have same name as project, so just call
+# 'project <session_name>' to setup the default project enviroment vars
+project $(tmux display-message -p "#S" 2> /dev/null) &> /dev/null
+
+# If project still not set, then no sessions setup, use default project
+[[ -z "${PROJECT_NAME}" ]] && project $(__projux_default_project)
