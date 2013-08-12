@@ -141,7 +141,7 @@ with the same project. These variables/alaises are set whenever the
         PROJECT_DIR=${HOME}/Workspace/${PROJECT_NAME}
         PROJECT_SRC_DIR=${PROJECT_DIR}/src
         PROJECT_TEST_DIR=${PROJECT_SRC_DIR}
-        PROJECT_TEST_SUFFIXES="_test"
+        PROJECT_TEST_SUFFIXES=cc:go::_test
         PROJECT_TARGET_DIR=${PROJECT_DIR}/target
         PROJECT_BIN_DIR=${PROJECT_TARGET_DIR}/bin
         PROJECT_PKGS="xxx/bar"
