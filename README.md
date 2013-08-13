@@ -16,7 +16,7 @@ Installation is straightforward:
 1. Clone the repository to a local machine (e.g. Mac laptop, etc):
 
         cd ~
-        git clone git://github.com/mdreves/projux.git
+        git clone git://github.com/mdreves/projux.git .projux
 
 2. Add default project settings to `~/.bashrc` and source `.projuxrc`
 
