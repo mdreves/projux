@@ -229,6 +229,44 @@ following command:
 
 When you call attach next time it will pick back right were you left off.
 
+# Projux and SBT (Simple Build Tool) - Continuous linting, testing, ...
+
+Projux provides a plugin for use with Scala's SBT (Simple Build Tool).
+Although Scala must be installed to use sbt, the projux plugin is intended
+to be used by non-Scala projects. To use the plugin the following must be
+installed:
+
+1. Scala (2.10 or later)
+2. SBT (0.13)
+
+Once Scala is installed, the plugin itself does not need to be installed;
+instead, just run the `psbt` command to launch sbt with the plugin. Once
+launched, many of the same commands used from the command line (format,
+lint, build, ...) can be run from the SBT command line. The difference is
+that in SBT you don't need to specify the targets. All files associated with
+the project (based on the environment variable settings at the time of
+launching `psbt`) are used as targets. With each subsequent call to a given
+command, only those files that changed since the last run are used as targets.
+You can also make use of SBT's watcher to automatically run a command whenever
+a project file is changed.
+
+Examples:
+        >format                      # format files
+        >~lint                       # watch for changes and auto-lint
+        >build                       # build
+        >~test                       # watch for changes and auto-test
+        ...
+
+# Projux and VIM
+
+Projux supports starting up VIM in server mode using the `pvim` command. When
+used, vim will be started with a server name that matches the current
+`$PROJECT_NAME` environment variable. Unfortunately, server mode in VIM is not
+like EMACS, you can't open multiple windows and share buffers. It is mainly
+used to send information from one TMUX window to another window running the VIM
+server (e.g. sending the quickfix output from a build in one window to VIM in
+running in another window in order to display the errors in Syntastic).
+
 # Project Management Commands
 
 ## project
@@ -344,6 +382,9 @@ When you call attach next time it will pick back right were you left off.
 
 ## pvim
     vim --servername $PROJECT_NAME -c ":Open :session"
+
+## psbt
+    sbt  # Run from ~/.projux/psbt
 
 # Project Development Commands
 

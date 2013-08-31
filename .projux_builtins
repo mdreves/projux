@@ -279,6 +279,22 @@ function pane() {
 }
 
 ################################################################################
+# Projux specific sbt
+################################################################################
+function psbt() {
+  pushd ${PROJUX_SCRIPT_DIR}/psbt &> /dev/null
+  if [[ $? -gt 0 ]]; then
+    local msg="Projux sbt directory ${PROJUX_SCRIPT_DIR} not found"
+    echo "$(tput setaf 1)ERROR: ${msg}$(tput sgr0)"
+    return 1
+  fi
+
+  sbt
+
+  popd &> /dev/null
+}
+
+################################################################################
 # SSH to project host
 ################################################################################
 function pssh() {
