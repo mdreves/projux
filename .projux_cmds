@@ -1306,7 +1306,7 @@ function __projux_select_cmd() {
   fi
 
   # evals ${PROJECT_FOO_CMDS-${DEFAULT_PROJECT_FOO_CMDS}}
-  local cmds=$(eval "\${${var}}-\${DEFAULT_${var}}")
+  local cmds=$(eval "echo \${${var}-\${DEFAULT_${var}}}")
   local cmd=$(__projux_key_value "${cmds}" "$@")
 
   if [[ -z "${VERBOSE}" || ${VERBOSE} -ne 0 ]]; then
@@ -1317,7 +1317,6 @@ function __projux_select_cmd() {
     $cmd
   fi
   return $?
-
 }
 
 ################################################################################
