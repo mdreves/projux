@@ -473,7 +473,7 @@ function run() {
   fi
 
   if [[ ${DRY_RUN-false} -eq 0 ]]; then
-    $cmd
+    eval "${cmd}"
   fi
 }
 
@@ -1249,7 +1249,7 @@ function clearrun() {
 # Helper function to get run cmd.
 #
 # Example (cmds=test1::test1 --foo=a, --bar=b test2::test2 --bat=c)
-#   # test1 --foo=a,d,e ==bar=b
+#   # test1 --foo=a,d,e --bar=b
 #   __projux_choose_cmd ${cmds} test1 --foo=+d,+e
 #
 # Args:
@@ -1314,7 +1314,7 @@ function __projux_select_cmd() {
   fi
 
   if [[ ${DRY_RUN-false} -eq 0 ]]; then
-    $cmd
+    eval "${cmd}"
   fi
   return $?
 }
@@ -2053,7 +2053,11 @@ local sep="\
   local pwd=${PWD/${HOME}/"~"}
   echo "PWD: ${pwd}"
   local padding="                                        "
-  local next="CMD: ${1}"
+  local next="CMD:"
+  # trim spaces in command
+  for value in ${1}; do
+    next="${next} ${value}"
+  done
   shift
   local state=2 # 1 next value is command, 2 first value after command, 0 normal
   local t

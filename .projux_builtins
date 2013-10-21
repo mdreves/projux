@@ -979,8 +979,10 @@ function __projux_key_value_list() {
 function __projux_key_value() {
   local values="${1}"
   shift
-  local value="${1}"
-  if [[ $# -gt 0 ]]; then
+  # The -* makes sure we don't confuse --flags for an embedded value
+  if [[ $# -gt 0 && "${1}" != -* ]]; then
+    local value="${1}"
+    shift
     # Search for key (e.g. foo in "foo::foo --flags bar::bar --flags")
     if [[ "${values}" =~ "${value}::" ]]; then
       # Strip everything up to including foo::
@@ -1023,9 +1025,11 @@ function __projux_key_value() {
         if [[ "${flag}" == --* ]]; then   # --foo
           flag=${flag:2}  # foo
           flag_prefix="--"
-        else                              # -foo
+        elif [[ "${flag}" == -* ]]; then  # -foo
           flag=${flag:1}  # foo
           flag_prefix="-"
+        else                              # just plain foo
+          flag_prefix=""
         fi
         new_value=${arg#*=}      # bar
       elif [[ "${arg}" == --no* ]]; then  # --nofoo
@@ -1069,10 +1073,10 @@ function __projux_key_value() {
         prefix=${values:0:${#values}-${#suffix}-2-${#flag}}  # -2 for -,=
         old_value=${suffix%% *}   # Strip up to first space
         suffix=${suffix:${#old_value}}
-      elif [[ "${values}" =~ "--${flag}" ]]; then
+      elif [[ "${values}" =~ "--${flag} " ]]; then
         suffix=${values#*--${flag}}     # Strip up to including --flag
         prefix=${values:0:${#values}-${#suffix}-2-${#flag}}  # -2 for --
-      elif [[ "${values}" =~ "-${flag}" ]]; then
+      elif [[ "${values}" =~ "-${flag} " ]]; then
         suffix=${values#*-${flag}}      # Strip up to including -flag
         prefix=${values:0:${#values}-${#suffix}-1-${#flag}}  # -1 for -
       else
