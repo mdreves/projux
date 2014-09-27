@@ -701,21 +701,21 @@ project.
 If PROJECT_ALIASES is set to to true, then an alias will be provided for all
 projux commands by prefixing each subcommand with ':'. For example:
 
-    :attach foo                  # projux attach foo
-    :build :lint                 # projux build :lint
+    :attach foo                 # projux attach foo
+    :build :lint                # projux build :lint
     ...
 
 In addition short cuts are provided for the most commonly used subcommands:
 
-    :a                            # projux attach
-    :b                            # projux build
-    :d                            # projux deploy
-    :f                            # projux format
-    :l                            # projux lint
-    :p                            # projux package
-    :r                            # projux run
-    :t                            # projux test
-    :w                            # projux win
+    :a                          # projux attach
+    :b                          # projux build
+    :d                          # projux deploy
+    :f                          # projux format
+    :l                          # projux lint
+    :p                          # projux package
+    :r                          # projux run
+    :t                          # projux test
+    :w                          # projux win
 
 
 # Environment Variables
