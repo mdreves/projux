@@ -1,5 +1,5 @@
 ###############################################################################
-# Copyright 2012-2013 Mike Dreves
+# Copyright 2012-2014 Mike Dreves
 #
 # All rights reserved. This program and the accompanying materials
 # are made available under the terms of the Eclipse Public License v1.0
@@ -29,8 +29,7 @@
 #
 # Keywords:
 # -------------------
-# By convention, keyword flags are # prefixed with ':' (e.g.
-# 'geterrors :build').
+# By convention, keyword flags are prefixed with ':' (e.g. 'geterrors :build').
 #
 # Key/Value Maps:
 # -------------------
@@ -237,8 +236,9 @@
 #     Override for test/coverate include filters. When set
 #     PROJECT_INCLUDE_FILTER is set to PROJECT_TEST_TARGETS before test or
 #     coverage is called. When not set, then PROJECT_INCLUDE_FILTER is used as
-#     set. This is used with the settest, etc functions to allow configuring
-#     a small subset of test to run multiple times during development.
+#     set. This is used with the set var :test, etc functions to allow
+#     configuring a small subset of test to run multiple times during
+#     development.
 #
 # -----------------------------------------------------------------------------
 # Variables for Custom Implementations:
@@ -267,7 +267,7 @@
 #     Name of custom 'geturl' function implementation.
 #
 #   PROJECT_SANITY_FN / DEFAULT_PROJECT_SANITY_FN
-#     Name of custom 'santity' function implementation.
+#     Name of custom 'sanity' function implementation.
 #
 # -----------------------------------------------------------------------------
 # Variables for Sharing/Syncing/Backup:
@@ -296,11 +296,12 @@
 #   PROJUX_ALIASES
 #     Set to true to add projux related aliases (cdsrc, etc).
 #
-#   PROJUX_CMDS
-#     Set to true to add projux related commands (format, lint, etc).
-#
 #   PROXY_CMDS
 #     Set to true to proxy commands to remote host when running locally.
+#
+#   PROJUX_NOTIFY_FN
+#     A function to call whenever a tmux new, attach, or switch call is made.
+#     The first parameter will be true if the call is for 'new'.
 #
 #   VERBOSE
 #     Some commands take a VERBOSE environment variable. This is a level setting
@@ -358,6 +359,12 @@ PROJUX_SCRIPT_DIR=$(\
   pwd; popd 2&> /dev/null)
 
 ################################################################################
+# Commands
+################################################################################
+
+. ${PROJUX_SCRIPT_DIR}/.projux_cmds
+
+################################################################################
 # Aliases
 ################################################################################
 
@@ -366,41 +373,8 @@ if [[ ${PROJUX_ALIASES-true} -eq 0 ]]; then
 fi
 
 ################################################################################
-# Builtins
-################################################################################
-
-. ${PROJUX_SCRIPT_DIR}/.projux_builtins
-
-################################################################################
-# Commands
-################################################################################
-
-if [[ ${PROJUX_CMDS-true} -eq 0 ]]; then
-  . ${PROJUX_SCRIPT_DIR}/.projux_cmds
-fi
-
-################################################################################
-# Help
-################################################################################
-
-function __projux_print_help {
-  if [[ ${PROJUX_ALIASES-true} -eq 0 ]]; then
-    __projux_print_aliases
-  fi
-  __projux_print_builtins
-
-  if [[ ${PROJUX_CMDS-true} -eq 0 ]]; then
-    __projux_print_cmds
-  fi
-}
-
-################################################################################
 # Init
 ################################################################################
 
-# If a tmux session exists it should have same name as project, so just call
-# 'project <session_name>' to setup the default project enviroment vars
-project $(tmux display-message -p "#S" 2> /dev/null) &> /dev/null
-
-# If project still not set, then no sessions setup, use default project
-[[ -z "${PROJECT_NAME}" ]] && project $(__projux_default_project)
+# Initialize with current project (no-op if no project set)
+__projux_project_init $(__projux_cur_project)

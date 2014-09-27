@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright 2012-2013 Mike Dreves
+# Copyright 2012-2014 Mike Dreves
 #
 # All rights reserved. This program and the accompanying materials
 # are made available under the terms of the Eclipse Public License v1.0
@@ -23,11 +23,9 @@
 # Entries are grouped per project (e.g. git project directory). The PROJECT_NAME
 # environment variable should be first in the list. All vars/aliases after this
 # setting and before the next PROJECT_NAME setting will updated whenever the
-# 'project' command is called with a name matching the project name. See
-# .projuxrc for information on the special key/value format used with project
-# windows, selectable commands, and commands based on file types.
-#
-# NOTE: A given setting must be defined on one line (e.g. '\' is NOT supported).
+# 'projux <project>' command is called with a name matching the project name.
+# See .projuxrc for information on the special key/value format used with
+# project windows, selectable commands, and commands based on file types.
 #
 # Example:
 #

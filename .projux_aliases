@@ -1,5 +1,5 @@
 ###############################################################################
-# Copyright 2012-2013 Mike Dreves
+# Copyright 2012-2014 Mike Dreves
 #
 # All rights reserved. This program and the accompanying materials
 # are made available under the terms of the Eclipse Public License v1.0
@@ -15,65 +15,64 @@
 # either express or implied.
 ###############################################################################
 
-alias cdproject='cd "${PROJECT_DIR}"'
-alias pushproject='pushd "${PROJECT_DIR}"'
-alias cdsrc='cd "${PROJECT_SRC_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[0]})"'
-alias cdsrc2='cd "${PROJECT_SRC_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[1]})"'
-alias cdsrc3='cd "${PROJECT_SRC_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[2]})"'
-alias cdsrc4='cd "${PROJECT_SRC_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[3]})"'
-alias cdsrc5='cd "${PROJECT_SRC_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[4]})"'
-alias pushsrc='pushd "${PROJECT_SRC_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[0]})"'
-alias pushsrc2='pushd "${PROJECT_SRC_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[1]})"'
-alias pushsrc3='pushd "${PROJECT_SRC_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[2]})"'
-alias pushsrc4='pushd "${PROJECT_SRC_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[3]})"'
-alias pushsrc5='pushd "${PROJECT_SRC_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[4]})"'
-alias cdcommon='cd "${PROJECT_SRC_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[0]})/../common"'
-alias pushcommon='pushd "${PROJECT_SRC_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[0]})/../common"'
-alias cdtest='cd "${PROJECT_TEST_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[0]})"'
-alias cdtest2='cd "${PROJECT_TEST_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[1]})"'
-alias cdtest3='cd "${PROJECT_TEST_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[2]})"'
-alias cdtest4='cd "${PROJECT_TEST_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[3]})"'
-alias cdtest5='cd "${PROJECT_TEST_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[4]})"'
-alias pushtest='pushd "${PROJECT_TEST_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[0]})"'
-alias pushtest2='pushd "${PROJECT_TEST_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[1]})"'
-alias pushtest3='pushd "${PROJECT_TEST_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[2]})"'
-alias pushtest4='pushd "${PROJECT_TEST_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[3]})"'
-alias pushtest5='pushd "${PROJECT_TEST_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[4]})"'
-alias cdbin='cd "${PROJECT_BIN_DIR}"'
-alias pushbin='pushd "${PROJECT_BIN_DIR}"'
-alias cdgen='cd "${PROJECT_GEN_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[0]})"'
-alias cdgen2='cd "${PROJECT_GEN_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[1]})"'
-alias cdgen3='cd "${PROJECT_GEN_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[2]})"'
-alias cdgen4='cd "${PROJECT_GEN_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[3]})"'
-alias cdgen5='cd "${PROJECT_GEN_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[4]})"'
-alias pushgen='pushd "${PROJECT_GEN_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[0]})"'
-alias pushgen2='pushd "${PROJECT_GEN_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[1]})"'
-alias pushgen3='pushd "${PROJECT_GEN_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[2]})"'
-alias pushgen4='pushd "${PROJECT_GEN_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[3]})"'
-alias pushgen5='pushd "${PROJECT_GEN_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[4]})"'
-alias catlast='cat ${PROJECT_LAST_OUT_DIR}/last_run'
-alias vilast='vi ${PROJECT_LAST_OUT_DIR}/last_run'
-alias catlint='cat ${PROJECT_TARGET_DIR}/lint/last_run'
-alias vilint='vi ${PROJECT_TARGET_DIR}/lint/last_run'
-alias catbuild='cat ${PROJECT_TARGET_DIR}/build/last_run'
-alias vibuild='vi ${PROJECT_TARGET_DIR}/build/last_run'
-alias cattest='cat ${PROJECT_TARGET_DIR}/test/last_run'
-alias vitest='vi ${PROJECT_TARGET_DIR}/test/last_run'
-alias catcoverage='cat ${PROJECT_TARGET_DIR}/coverage/last_run'
-alias vicoverage='vi ${PROJECT_TARGET_DIR}/coverage/last_run'
+# Frequently used shortcuts
+alias :a='projux attach'
+alias :b='projux build'
+alias :d='projux deploy'
+alias :f='projux format'
+alias :l='projux lint'
+alias :p='projux package'
+alias :r='projux run'
+alias :t='projux test'
+alias :w='projux win'
 
-################################################################################
-# Help
-################################################################################
+# Project Info Subcomands
+alias :ls='projux ls'
+alias :settings='projux settings'
+alias :bin='projux bin'
+alias :flags='projux flags'
+alias :var='projux var'
 
-function __projux_print_aliases() {
-  echo "cdproject                             - cd to project dir"
-  echo "pushproject                           - pushd to project dir"
-  echo "cdsrc[n]                              - cd to pkg[n] under src dir"
-  echo "pushsrc[n]                            - pushd to pkg[n] under src dir"
-  echo "cdtest[n]                             - cd to pkg[n] under test dir"
-  echo "pushtest[n]                           - pushd to pkg[n] under test dir"
-  echo "cdbin                                 - cd to bin dir"
-  echo "cdgen[n]                              - cd to pkg[n] under gen dir"
-  echo "pushgen[n]                            - pushd to pkg[n] under gen dir"
-}
+# Remote Project Management Subcomands
+alias :sync='projux sync'
+alias :ssh='projux ssh'
+alias :sftp='projux sftp'
+
+# Project Session Management Subcommands
+alias :sessions='projux sessions'
+alias :attach='projux attach'
+alias :detach='projux detach'
+alias :kill='projux kill'
+alias :clear='projux clear'
+alias :reload='projux reload'
+alias :win='projux win'
+alias :pane='projux pane'
+
+# Project File And Directory Management Subcommands
+alias :cd='projux cd'
+alias :pushd='projux pushd'
+alias :cat='projux cat'
+alias :vi='projux vi'
+
+# Project Tools Subcommands
+alias :format='projux format'
+alias :lint='projux lint'
+alias :build='projux build'
+alias :test='projux test'
+alias :coverage='projux coverage'
+alias :run='projux run'
+alias :clean='projux clean'
+alias :package='projux package'
+alias :deploy='projux deploy'
+alias :gendocs='projux gendocs'
+alias :search='projux search'
+alias :sanity='projux sanity'
+alias :backup='projux backup'
+alias :share='projux share'
+alias :vimserver='projux vimserver'
+alias :sbt='projux sbt'
+
+# Project Output Subcommands
+alias :errors='projux errors'
+alias :url='projux url'
+alias :goto='projux goto'
