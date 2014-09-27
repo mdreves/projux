@@ -5,9 +5,11 @@ managing one or more project working directories and related settings.
 Projects can be managed both locally and remotely (via TMUX).
 
 Built-in support is provided for connecting to remote workspaces, switching
-between workspaces (automatically setting and clearing project environment variables), and managing sessions. A framework is also provided for
+between workspaces (automatically setting and clearing project environment
+variables), and managing sessions. A framework is also provided for
 implementing project specific functions for formatting, linting, building,
 testing, etc based on a standard set of commands common to all projects.
+
 
 # Installation
 
@@ -37,7 +39,7 @@ Installation is straightforward:
 
 4. Setup remote hosts (if needed)
 
-    This can either be done using `project sync` or manually.  In either case,
+    This can either be done using `projux sync` or manually.  In either case,
     make sure to set either the `DEFAULT_PROJECT_HOST` var in `~/.bashrc` (if
     hosting all projects on a single server) or per project `PROJECT_HOST` vars
     in `~/.projects` (if different projects have different servers).
@@ -66,11 +68,12 @@ Installation is straightforward:
 
     If using `DEFAULT_PROJECT_HOST` and `DEFAULT_PROJECT_SYNC_LIST` settings:
 
-        $ project sync
+        $ projux sync
 
     If separate `PROJECT_HOST` and `PROJECT_SYNC_LIST` settings:
 
-        $ project sync <project_name>
+        $ projux sync <project_name>
+
 
 # Example
 
@@ -97,18 +100,18 @@ development languages.  Here is an example of the settings we might add to
 
         # Format implementations for C++ and Go files
         export DEFAULT_PROJECT_FORMAT_CMDS="\
-          c:cc:cpp:h::clang-format -i <targets> \
-          go::gofmt -tabs=false -tabwidth=2 -w <targets>"
+          c:cc:cpp:h::clang-format -i <flags> <targets> \
+          go::gofmt -tabs=false -tabwidth=2 -w <flags> <targets>"
 
         # Lint implementation for Go files (using both govet and golint)
         export DEFAULT_PROJECT_LINT_CMDS="\
-          go::golint <targets>; govet <targets>"
+          go::golint <flags> <targets>; govet <flags> <targets>"
 
         # Build implementation for Scala, C++, and Go files
         export DEFAULT_PROJECT_BUILD_CMDS="\
-          scala::scalac <targets> \
-          cc::clang++ -std=c++11 -stdlib=libc++ -W <targets> \
-          go::go <targets>"
+          scala::scalac <flags> <targets> \
+          cc::clang++ -std=c++11 -stdlib=libc++ -W <flags> <targets> \
+          go::go <flags> <targets>"
 
 We could also add support for test, coverage, clean, package, etc, but we
 will keep the example simple for now.
@@ -118,7 +121,7 @@ variables and aliases are associated with a given project based on their
 position within the file.  All variables and aliases from the start of a
 `PROJECT_NAME` entry up to the next `PROJECT_NAME` entry will be associated
 with the same project. These variables/alaises are set whenever the
-`project <project_name>` command is used.
+`projux <project_name>` command is used.
 
         # foo project
         PROJECT_NAME=foo
@@ -129,9 +132,9 @@ with the same project. These variables/alaises are set whenever the
         PROJECT_TARGET_DIR=${PROJECT_DIR}/target
         PROJECT_BIN_DIR=${PROJECT_TARGET_DIR}/bin
         PROJECT_PKGS="com/xxx/foo com/xxx/common"
-        PROJECT_DEFAULT_RUN_CMDS="\
-            client::client -log_dir=log -server=localhost:54321 \
-            server::server -port=54321"
+        PROJECT_RUN_CMDS="\
+            client::client -log_dir=log -server=localhost:4321 \
+            server::server -port=4321"
         alias start="startup_script"
         alias stop="stop_script"
 
@@ -145,13 +148,13 @@ with the same project. These variables/alaises are set whenever the
         PROJECT_TARGET_DIR=${PROJECT_DIR}/target
         PROJECT_BIN_DIR=${PROJECT_TARGET_DIR}/bin
         PROJECT_PKGS="xxx/bar"
-        PROJECT_DEFAULT_RUN_CMDS="bar --echo_flag="hello"
+        PROJECT_RUN_CMDS="bar -echo_flag="hello"
 
 At this point we will assume that the projects have been syncd between the
-local and remove hosts using `project sync`, etc as described in the
+local and remove hosts using `projux sync`, etc as described in the
 installation steps. We can now attach to a project in a remote workspace using:
 
-        $ project attach foo
+        $ projux attach foo
 
 The first time this command is run from the local host it will create all the
 TMUX windows listed in `DEFAULT_PROJECT_WINDOWS` and will then attach to the
@@ -159,7 +162,7 @@ first window listed (`vim` in our example). Subsequent calls will then reattach
 wherever you left off.
 
 We could attach another terminal window by issuing the same command in a
-different terminal, but doing will cause all our actions in one window to
+different terminal, but doing this will cause all our actions in one window to
 be mirrored in the other (including switching windows). This may be useful
 in some cases (e.g. mirroring a session so one person can watch what another
 person is doing), but in our case we would like to attach a second terminal to
@@ -171,12 +174,12 @@ grouped sessions. The setup is a bit complicated, but projux let's us do this
 by just adding a number (2 in this case) to the end of the command to have it
 work in another session group. In the second terminal we will run:
 
-        $ project attach foo 2
+        $ projux attach foo 2
 
 This will load the same project environment variables as the first terminal,
 but instead of attaching to the first window by default, it will attach to the
 second TMUX window (`build` in our example). These terminals can now operate
-independently. Using the `win` command (or TMUX itself) you can switch the
+independently. Using the `win` subcommand (or TMUX itself) you can switch the
 second terminal to the first TMUX window (in which case you will get mirroring
 between the terminals), but switching out of that window to another will only
 effect the second terminal window and not the first (e.g. TMUX window switches
@@ -188,317 +191,328 @@ the same number.
 Now lets switch projects. To change the first terminal window to load project
 `bar` use the following command:
 
-        $ project bar
+        $ projux attach bar
 
-Notice that we didn't use attach since we are already attached to the remote
-server so this command is being run remotely. We can switch the second terminal
-window to bar as well by using:
+Notice that we used attach even though we are already attached to the remote
+server, this is to keep things consistent and simple, all you need to remember
+is to point a terminal to a projects sessions (new or already existing) just use
+attach. We can switch the second terminal window to bar as well by using:
 
-        $ project bar 2
+        $ projux attach bar 2
 
-An you can go back and forth.
+And you can go back and forth.
 
-        $ project foo
+        $ projux attach foo
 
 Once you are working with a given project, all the environment variables and
 aliases will be set to that project. Each time you switch, you clear the
 previous and load the new. You can read more in the docs below, but there are
 various subcommands supported by project such as listing existing projects,
-killing project sessions, etc. Note that the namespace is overloaded, so in the
-unlikley case that you call you project 'ls', etc, you may run into issues...
+killing project sessions, etc.
 
 In addition to project management related commands, projux provides support
 for common development related operations. For example, to format all the files
 (that have formatting implementations) use the following:
 
-        $ format ...
+        $ projux format
 
 Based on our settings, this command would only work in the `bar` project because
 a format implementation was not provided for `foo`. A full list of commands is
 provided in the documentation below, but it covers basic things such as lint,
 build, test, etc. It also covers commands for running a built executable:
 
-        $ run                        # runs 'client -log_dir=log -port=54321'
-        $ run client -log_dir=/tmp   # runs 'client -log_dir=/tmp -port=54321'
-        $ run server                 # runs 'server -port=54321'
+        $ projux run                     # runs 'client -log_dir=log -port=4321'
+        $ projux run client -log_dir=/t  # runs 'client -log_dir=/t -port=4321'
+        $ projux run server              # runs 'server -port=4321'
 
 When you need to disconnect from the development server, just issue the
 following command:
 
-        $ project detach
+        $ projux detach
 
 When you call attach next time it will pick back right were you left off.
 
-# Projux and SBT (Simple Build Tool) - Continuous linting, testing, ...
 
-Projux provides a plugin for use with Scala's SBT (Simple Build Tool).
-Although Scala must be installed to use sbt, the projux plugin is intended
-to be used by non-Scala projects. To use the plugin the following must be
-installed:
+# Conventions
 
-1. Scala (2.10 or later)
-2. SBT (0.13)
+In order to try to be consistent, many projux subcommands follow a set of
+conventions.
 
-Once Scala is installed, the plugin itself does not need to be installed;
-instead, just run the `psbt` command to launch sbt with the plugin. Once
-launched, many of the same commands used from the command line (format,
-lint, build, ...) can be run from the SBT command line. The difference is
-that in SBT you don't need to specify the targets. All files associated with
-the project (based on the environment variable settings at the time of
-launching `psbt`) are used as targets. With each subsequent call to a given
-command, only those files that changed since the last run are used as targets.
-You can also make use of SBT's watcher to automatically run a command whenever
-a project file is changed.
+## Keywords
 
-Examples:
-        >format                      # format files
-        >~lint                       # watch for changes and auto-lint
-        >build                       # build
-        >~test                       # watch for changes and auto-test
-        ...
+By convention, keyword args are prefixed with `:` (e.g. `geterrors :build`,
+`cd :src`, etc).
 
-# Projux and VIM
-
-Projux supports starting up VIM in server mode using the `pvim` command. When
-used, vim will be started with a server name that matches the current
-`$PROJECT_NAME` environment variable. Unfortunately, server mode in VIM is not
-like EMACS, you can't open multiple windows and share buffers. It is mainly
-used to send information from one TMUX window to another window running the VIM
-server (e.g. sending the quickfix output from a build in one window to VIM in
-running in another window in order to display the errors in Syntastic).
-
-# Project Management Commands
-
-## project
-    $ project
-
-      Show current project.
-
-    $ project ls
-
-      Display list of known projects (from ~/.projects).
-
-    $ project <project>
-
-      If attached switch to <project>, if detached init <project> vars.
-
-      Examples:
-        project foo            :  Switch to project foo
-
-    $ project attach [<project>] [<session>]
-
-      Attach to TMUX session.
-
-      Examples:
-        project attach foo     :  Attach/switch to foo project
-        project attach 2       :  Attach/switch to 2nd session for project
-        project attach foo 3   :  Attach/switch to 3rd session for project foo
-
-    $ project detach [<project>] [<session>]
-
-      Detach from TMUX session.
-
-      Examples:
-        project detach         :  Detach current client from cur project
-        project detach foo     :  Detach all clients attached to foo project
-        project detach foo 2   :  Detach all clients attached to 2nd foo session
-
-    $ project kill [<project>] [<session>]
-
-      Kill TMUX session.
-
-      Examples:
-        project kill           :  Kill all of current project's TMUX sessions
-        project kill foo       :  Kill all of foo project's TMUX sessions
-        project kill foo 1     :  Kill main session of project foo
-        project kill foo 2     :  Kill 2nd session of project foo
-
-    $ project sessions
-
-      Show all attached project sessions.
-
-    $ project settings [<project>]
-
-      Show project env var settings.
-
-      Examples:
-        project settings       :  Show current project settings
-        project settings foo   :  Show project foo's env var settings
-
-    $ project clear
-
-      Clear env var settings for current project.
-
-      Examples:
-        project clear
-
-    $ project sync [<project>]
-
-      Sync local files with remote project host based on $PROJECT_SYNC_LIST and
-      $PROJECT_SYNC_DESTS.
-
-      Examples:
-        project sync           :  Sync current project
-        project sync foo       :  Sync local files with foo's project host
-
-    $ project backup [<project>]
-
-      Backs up changed project files (not in .git repo) to $PROJECT_BACKUP_DIR.
-
-      Examples:
-        project backup         :  Backup uncomitted .git files
-        project backup foo     :  Backup uncomited project foo .git files
-
-## win
-    $ win
-
-      Display current TMUX window.
-
-    $ win ls
-
-      List current sessions TMUX windows.
-
-    $ win [<win>]
-
-      Switch to named window.
-
-      Examples:
-        win bash               :  Switch to window named bash
-
-    $ win new [<win>]
-
-      Create new TMUX window
-
-    $ win session
-
-      Switch to window associated with TMUX session group (foo_2 => 2).
-
-# Project Specific Bash Commands
-## pssh
-    ssh -Y -t $PROJECT_HOST
-
-## psftp
-    sftp $PROJECT_HOST
-
-## pvim
-    vim --servername $PROJECT_NAME -c ":Open :session"
-
-## psbt
-    sbt  # Run from ~/.projux/psbt
-
-# Project Development Commands
-
-## Overview
-
-### Recursive Targets
+## Recursive Targets
 
 The characters `...` following a directory target means the directory and all
 sub-directores recursively. For example, `build a/...` means build the
 `a/` directory and all its sub-directories.
 
-### Keywords
+## Common Flags
+Many commands accept a `-p <project>[:<win>]` flag to specify the project and
+optional win to run the command against. If used, this must come before other
+cmd args. When used the current project will not be changed, instead the command
+will be sent over TMUX to the default (first window) associated with the
+project.
 
-By convention, keyword flags are prefixed with `:` (e.g. `geterrors :build`).
 
-### Common Flags
-    -p <project>[:<win>]
-       Many commands accept a -p flag to specify the project and optional win
-       to run the command against. If used, this must come before other cmd
-       args. When used the current project will not be changed, instead the
-       command will be sent over TMUX to the default (first window) associated
-       with the project.
+# Subcommands
 
-## format
-    $ format [-p <project>] <targets>
+## Project Settings Subcommands
+    $ projux
+
+      Show current project.
+
+    $ projux ls
+
+      Display list of known projects (from ~/.projects).
+
+    $ projux settings [<project>]
+
+      Show project env var settings.
+
+      Examples:
+        projux settings         :  Show current project settings
+        projux settings foo     :  Show project foo's env var settings
+
+    $ projux bin [<cmd>]
+
+      Display the full path to a binary associated with the project. The
+      binaries built by the projects are assumed to be stored in
+      $PROJECT_TARGET_DIR. The $PROJECT_RUN_CMDS specify the name used
+      within projux to refer to the binary.
+
+      Examples:
+        projux bin              :  Full path to 1st entry in $PROJECT_RUN_CMDS
+        projux bin client       :  Full path to client:: from $PROJECT_RUN_CMDS
+
+    $ projux flags [<cmd>]
+
+      Display the full path and flags for a binary associated with the project.
+      The binaries built by the projects are assumed to be stored in
+      $PROJECT_TARGET_DIR. The $PROJECT_RUN_CMDS specify the name used
+      within projux to refer to the binary and its flags.
+
+      Examples:
+        projux flags            :  Display 1st entry in $PROJECT_RUN_CMDS
+        projux flags client     :  Diplay client:: from $PROJECT_RUN_CMDS
+
+
+    $ projux var {get|set|update|clear} {:test [+/-]<targets>|:run [+/-]<flags>}
+
+      Set/get/upate/clear variables related to $PROJECT_TEST_TARGETS and
+      $PROJECT_RUN_CMDS.
+
+      Examples for $PROJECT_TEST_TARGETS:
+        PROJECT_TEST_TARGETS="a_test b_test"
+        projux var get :test                  # echo $PROJECT_TEST_TARGETS
+        projux var set :test c_test           # PROJECT_TEST_TARGETS=c_test
+        projux var update :test +d -b_test    # PROJECT_TEST_TARGEST=a_test d
+        projux var clear :test                # PROJECT_TEST_TARGETS=""
+
+      Examples for $PROJECT_RUN_CMDS:
+        PROJECT_RUN_CMDS="cl::client -f=a srv::server -p=6"
+        projux var get :run                    # echo $PROJECT_RUN_CMDS
+        projux var get :run cl                 # echo "client -f=a"
+        projux var get :run cl -f=+b           # echo "client -f=a,b"
+        projux var update :run cl::cl -g=+z,-y # Update cl:: to cl::client -g=x,z
+        projux var set :run xxx:prog -a        # PROJECT_RUN_CMDS=xxx::prog -a
+        projux var clear :run                  # PROJECT_RUN_CMDS=""
+
+
+## Remote Project Management Subcommands
+    $ projux sync [<project>]
+
+      Sync local files with remote project host based on $PROJECT_SYNC_LIST and
+      $PROJECT_SYNC_DESTS.
+
+      Examples:
+        projux sync             :  Sync current project
+        projux sync foo         :  Sync local files with foo's project host
+
+    $ projux ssh [<project>]
+
+      SSH to remote project host (based on $PROJECT_HOST). If no project name is
+      provided, then SSH to $DEFAULT_PROJECT_HOST. The -Y and -t flags will be
+      passed to the SSH command.
+
+      Examples:
+        projux ssh              :  SSH to default remote host
+        projux ssh foo          :  SSH to remote host for foo project
+
+    $ projux sftp [<project>]
+
+      SFTP to remote project host (based on $PROJECT_HOST). If no project name is
+      provided, then SFTP to $DEFAULT_PROJECT_HOST.
+
+      Examples:
+        projux sftp             :  SFTP to default remote host
+        projux sftp foo         :  SFTP to remote host for foo project
+
+
+## Project Session Management Subcommands
+    $ projux sessions
+
+      Show all attached project sessions.
+
+    $ projux attach <project> [<session>]
+
+      If attached switch to <project>, if detached create new TMUX session. In
+      either case, initialize project vars.
+
+      Examples:
+        projux attach foo       :  Attach/switch to foo project
+        projux attach bar 2     :  Attach/switch to 2nd session for project bar
+        projux attach foo 3     :  Attach/switch to 3rd session for project foo
+
+    $ projux detach [<project>] [<session>]
+
+      Detach from TMUX session.
+
+      Examples:
+        projux detach           :  Detach current client from cur project
+        projux detach foo       :  Detach all clients attached to foo project
+        projux detach foo 2     :  Detach clients attached to 2nd foo session
+
+    $ projux kill [<project>] [<session>]
+
+      Kill TMUX session.
+
+      Examples:
+        projux kill             :  Kill all of current project's TMUX sessions
+        projux kill foo         :  Kill all of foo project's TMUX sessions
+        projux kill foo 1       :  Kill main session of project foo
+        projux kill foo 2       :  Kill 2nd session of project foo
+
+    $ projux clear
+
+      Clear env var settings for current project.
+
+      Examples:
+        projux clear
+
+    $ projux reload
+
+      Reload env var settings for current project.
+
+      Examples:
+        projux reload
+
+    $ projux win [<win>|:default|:delete <win>|:new <win>]
+
+      Project window management. If no args are passed, then list the current
+      windows. If a window name is passed as an arguement, then switch to that
+      window. If :default is passed print the default window (for session 1, the
+      default is the first window, for session 2, it is the second, etc). If
+      :new <win> or :delete <win> is used then create a new window or delete an
+      existing window (by name).
+
+      Examples:
+        projux win              :  Display current windows
+        projux win vim          :  Switch to vim window
+        projux win :default     :  Print default window for this session
+        projux win :new xx      :  Create a new window named 'xx'
+        projux win :delete xx   :  Delete window named 'xx'
+
+    $ projux pane [<pane>|:delete <pane>|:split|:vsplit]
+
+      Project window pane management. If no args are passed, then list the
+      current window panes. If a pane number (either current number or a global
+      ID) is passed as an arguement, then switch to that pane. If :delete <pane>
+      is used then delete an existing pane (by number or global ID). If :split
+      or :vsplit is used then create a new pane by splitting horizontally or
+      vertiacally.
+
+      Examples:
+        projux pane             :  Display current panes
+        projux pane 2           :  Switch to pane 2
+        projux pane %5          :  Switch to pane with global ID 5
+        projux pane :split      :  Create pane by horizontal split
+        projux pane :vsplit     :  Create pane by vertical split
+        projux pane :delete 3   :  Delete pane 3
+
+
+## Project File and Directory Management Subcommands
+    $ projux cd {:bin|:gen [#]|:project|:src [#]|:test [#]}
+
+      Change to project related directories.
+
+      Examples:
+        projux cd :bin          :  cd $PROJECT_BIN_DIR
+        projux cd :src          :  cd $PROJECT_SRC_DIR/$PROJECT_PKGS[0]
+        projux cd :src 2        :  cd $PROJECT_SRC_DIR/$PROJECT_PKGS[1]
+        projux cd :test 2       :  cd $PROJECT_TEST_DIR/$PROJECT_PKGS[1]
+        projux cd :project      :  cd $PROJECT_DIR
+        projux cd :gen 3        :  cd $PROJECT_GEN_DIR/$PROJECT_PKGS[2]
+
+    $ projux pushd {:bin|:gen [#]|:project|:src [#]|:test [#]}
+
+      Push project related directories.
+
+      Examples:
+        projux pushd :bin       :  pushd $PROJECT_BIN_DIR
+        projux pushd :src       :  pushd $PROJECT_SRC_DIR/$PROJECT_PKGS[0]
+        projux pushd :src 2     :  pushd $PROJECT_SRC_DIR/$PROJECT_PKGS[1]
+        projux pushd :test 2    :  pushd $PROJECT_TEST_DIR/$PROJECT_PKGS[1]
+        projux pushd :project   :  pushd $PROJECT_DIR
+        projux pushd :gen 3     :  pushd $PROJECT_GEN_DIR/$PROJECT_PKGS[2]
+
+
+## Project Tools Subcommands
+    $ projux format [-p <project>] <targets>
 
       Runs project specific format based on $PROJECT_FORMAT_CMDS.
 
       Examples:
-        format foo.cc          :  Format specific file
-        format                 :  Format recursively from current dir
-        format ...             :  As above
-        format :project        :  Format all project files
-        format -p foo ...      :  Format recursively in project foo
+        projux format           :  Format recursively from current dir
+        projux format ...       :  As above
+        projux format foo.cc    :  Format specific file
+        projux format :project  :  Format all project files
+        projux format -p foo    :  Format recursively in project foo
 
-## lint
-    $ lint [-p <project>] <targets>
+    $ projux lint [-p <project>] <targets>
 
       Runs project specific lint based on $PROJECT_LINT_CMDS.
 
       Examples:
-        lint foo.py            :  Lint specific file.
-        lint                   :  Lint recursively from current dir
-        lint ...               :  As above
-        lint :project          :  Lint all project files
-        lint -p foo ...        :  Lint recursively in project foo
+        projux lint             :  Lint recursively from current dir
+        projux lint ...         :  As above
+        projux lint foo.py      :  Lint specific file.
+        projux lint :project    :  Lint all project files
+        projux lint -p foo      :  Lint recursively in project foo
 
-## build
-    $ build [-p <project>] <targets>
+    $ projux build [-p <project>] <targets>
 
       Runs project specific build based on $PROJECT_BUILD_CMDS.
 
       Examples:
-        build Foo.scala        :  Build specific file.
-        build                  :  Build recursively from current dir
-        build ...              :  As above
-        build -p foo ...       :  Build recursively in project foo
+        projux build Foo.scala  :  Build specific file.
+        projux build            :  Build recursively from current dir
+        projux build ...        :  As above
+        projux build -p foo     :  Build recursively in project foo
 
-## test
-    $ test [-p <project>] <targets>
+    $ projux test [-p <project>] <targets>
 
       Runs project specific test based on $PROJECT_TEST_CMDS.
 
       Examples:
-        test my_test           :  Test specific file.
-        test                   :  Test recursively from current dir
-        test ...               :  As above
-        test -p foo ...        :  Test recursively in project foo
+        projux test             :  Test recursively from current dir
+        projux test ...         :  As above
+        projux test my_test     :  Test specific file.
+        projux test -p foo      :  Test recursively in project foo
 
-    $ gettest [-p <project>]
-
-      Returns project default test targets ($PROJECT_TEST_TARGETS).
-
-    $ settest [-p <project>] <targets>
-
-      Sets project default test targets ($PROJECT_TEST_TARGETS).
-
-      Examples:
-        settest Foo            :  PROJECT_TEST_TARGETS=Foo
-
-    $ updatetest [-p <project>] {+,-}<targets>
-
-      Add/remove to/from project default test targets ($PROJECT_TEST_TARGETS).
-
-      Examples:
-        updatetest +foo        :  Add foo to PROJECT_TEST_TARGETS
-        updatetest -bar        :  Remove bar from PROJECT_TEST_TARGETS
-
-    $ cleartest [-p <project>]
-
-      Clears project default test targets ($PROJECT_TEST_TARGETS).
-
-## coverage
-    $ coverage [-p <project>] <targets>
+    $ projux coverage [-p <project>] <targets>
 
       Runs project specific coverage based on $PROJECT_COVERAGE_CMDS.
 
       Examples:
-        coverage my_test       :  Coverage for a specific file.
-        coverage               :  Coverage recursively from current dir
-        coverage ...           :  As above
-        coverage -p foo ...    :  Coverage recursively in project foo
+        projux coverage         :  Coverage recursively from current dir
+        projux coverage ...     :  As above
+        projux coverage x_test  :  Coverage for a specific file.
+        projux coverage -p foo  :  Coverage recursively in project foo
 
-## clean
-    $ clean [-p <project>]
-
-      Cleans project temp files based on $PROJECT_CLEAN_CMDS.
-
-      Examples:
-        clean                  :  Clean project files
-        clean -p foo           :  Clean project foo
-
-## run
-    $ run [-p <project>] [<label>] [<flags>]
+    $ projux run [-p <project>] [<label>] [<flags>]
 
       Runs project specific program based on $PROJECT_RUN_CMDS setting.
       Multiple executables can be tagged with 'key::' labels to distinguish
@@ -506,98 +520,123 @@ By convention, keyword flags are prefixed with `:` (e.g. `geterrors :build`).
       appropriate program. If no label is provided then the first entry is used.
 
       Examples:
-        PROJECT_RUN_CMDS="client::client --f=a server::server --port=6"
-        run                    :  $PROJECT_RUN_DIR/client --f=a
-        run client             :  As above
-        run client --f=-a,+b   :  $PROJECT_RUN_DIR/client --f=b
-        run client --f=c       :  $PROJECT_RUN_DIR/client --f=c
-        run shared server      :  $PROJECT_SHARE_DIR/server --port=6
+        PROJECT_RUN_CMDS="client::cl -f=a srv::server -port=6"
+        projux run              :  $PROJECT_RUN_DIR/cl -f=a
+        projux run cl           :  As above
+        projux run cl -f=-a,+b  :  $PROJECT_RUN_DIR/cl -f=b
+        projux run cl -f=c      :  $PROJECT_RUN_DIR/cl -f=c
+        projux run -shared srv  :  $PROJECT_SHARE_DIR/srv -port=6
 
-    $ getrun [-p <project>] [<label>] [<flags>]
+    $ projux clean [-p <project>]
 
-      Returns project run commands ($PROJECT_RUN_CMDS).
-
-      Examples:
-        PROJECT_RUN_CMDS="client::client --f=a server::server --port=6"
-        getrun                 : client::client --f=a server::server --port=6
-        getrun client          : client --f=a
-        getrun client --f=+b   : client --f=a,b
-
-    $ setrun [-p <project>] <cmds>
-
-      Sets project run commands ($PROJECT_RUN_CMDS).
+      Cleans project temp files based on $PROJECT_CLEAN_CMDS.
 
       Examples:
-        setrun client::client --f=a server::server --port=6
+        projux clean            :  Clean project files
+        projux clean -p foo     :  Clean project foo
 
-    $ updaterun [-p <project>] <label> <flags{+,-}>
-
-      Add/remove flags to/from a project run command ($PROJECT_RUN_CMDS).
-
-      Examples:
-        updaterun client::client --f=-a,+b
-
-    $ clearrun [-p <project>]
-
-      Clears project run commands ($PROJECT_RUN_CMDS).
-
-## share
-    $ share [-p <project>] <prog>
-
-      Copies named program file from $PROJECT_BIN_DIR to $PROJECT_SHARE_DIR.
-
-      Examples:
-        share client           :  cp $PROJECT_BIN_DIR/client $PROJECT_SHARED_DIR
-
-## package
-    $ package [-p <project>] [<label>] [<flags>]
+    $ projux package [-p <project>]
 
       Package project output files based on $PROJECT_PACKAGE_CMDS.
 
       Examples:
-        package                :  Package project output
-        package -p foo         :  Package project foo
+        projux package          :  Package project output
+        projux package -p foo   :  Package project foo
 
-## deploy
-    $ deploy [-p <project>] [<label>] [<flags>]
+    $ projux deploy [-p <project>]
 
       Deploy project based on $PROJECT_DEPLOY_CMDS.
 
       Examples:
-        deploy                 :  Deploy project
-        deploy -p foo          :  Deploy project foo
+        projux deploy           :  Deploy project
+        projux deploy -p foo    :  Deploy project foo
 
-## gendocs
-    $ gendocs [-p <project>] [<label>] [<flags>]
+    $ projux gendocs [-p <project>]
 
       Generate docs for project based on $PROJECT_GENDOCS_CMDS.
 
       Examples:
-        gendocs                :  Generate docs for project
-        gendocs -p foo         :  Generate docs for project foo
+        projux gendocs          :  Generate docs for project
+        projux gendocs -p foo   :  Generate docs for project foo
 
-## search
-    $ search [-p <project>] [<label>] [<patterns>]
+    $ projux search [-p <project>]
 
       Runs project specific search based on $PROJECT_SEARCH_CMDS.
 
       Examples:
-        search xxx             :  Search for xxx in project code base
-        search -p foo xxx      :  Search for xxx in project foo code base
+        projux search xxx       :  Search for xxx in project code base
+        projux search -p p xxx  :  Search for xxx in project p code base
 
-## sanity
-    $ sanity [-p <project>]
+    $ projux sanity [-p <project>]
 
       Runs project specific sanity. The default implementation runs format,
       lint, build, test, and coverage. A project specific implementation can
       be defined by setting $PROJECT_SANITY_FN.
 
       Examples:
-        sanity                 :  Run sanity for current project
-        sanity -p foo          :  Run sanity on project foo
+        projux sanity           :  Run sanity for current project
+        projux sanity -p foo    :  Run sanity on project foo
 
-## Misc
-    $ geterrors {:build|:lint|:test|:coverage}
+    $ projux share [-p <project>] <label>
+
+      Copies named program file from $PROJECT_BIN_DIR to $PROJECT_SHARE_DIR.
+
+      Examples:
+        projx share cl          :  cp $PROJECT_BIN_DIR/client $PROJECT_SHARED_DIR
+
+    $ projux backup [<project>]
+
+      Backs up changed project files (not in .git repo) to $PROJECT_BACKUP_DIR.
+
+      Examples:
+        projux backup           :  Backup uncomitted .git files
+        projux backup foo       :  Backup uncomitted project foo .git files
+
+    $ projux vimserver
+
+      Projux supports starting up VIM in server mode using the `projux vim`
+      command.  When used, vim will be started with a server name that matches
+      the current `$PROJECT_NAME` environment variable. Unfortunately, server
+      mode in VIM is not like EMACS, you can't open multiple windows and share
+      buffers. It is mainly used to send information from one TMUX window to
+      another window running the VIM server (e.g. sending the quickfix output
+      from a build in one window to VIM in running in another window in order
+      to display the errors in Syntastic).
+
+      Examples:
+        projux vim              :  vim -servername $PROJECT_NAME -c ":Open :s"
+
+    $ projux sbt
+
+      Projux provides a plugin for use with Scala's SBT (Simple Build Tool).
+      Although Scala must be installed to use sbt, the projux plugin is intended
+      to be used by non-Scala projects. To use the plugin the following must be
+      installed:
+
+      1. Scala (2.10 or later)
+      2. SBT (0.13)
+
+      Once Scala is installed, the plugin itself does not need to be installed;
+      instead, just run the `projux sbt` command to launch sbt with the plugin.
+      Once launched, many of the same commands used from the command line
+      (format, lint, build, ...) can be run from the SBT command line. The
+      difference is that in SBT you don't need to specify the targets. All files
+      associated with the project (based on the environment variable settings at
+      the time of launching `projux sbt`) are used as targets. With each
+      subsequent call to a given command, only those files that changed since
+      the last run are used as targets.  You can also make use of SBT's watcher
+      to automatically run a command whenever a project file is changed.
+
+      Examples:
+        projux sbt              :  Run sbt from ~/.projux/psbt
+        >format                 :  Format files
+        >~lint                  :  Watch for changes and auto-lint
+        >build                  :  Build
+        >~test                  :  Watch for changes and auto-test
+
+
+## Project Output Subcommands
+    $ projux errors {:build|:lint|:test|:coverage|<file>}
 
       Returns VIM quickfix friendly errors for last build/lint/test/coverage.
       Errors should be echoed in the form: <filename>:<line>:<col>:<message>.
@@ -606,89 +645,77 @@ By convention, keyword flags are prefixed with `:` (e.g. `geterrors :build`).
       the errors for the passed in target should be returned.
 
       Examples:
-        geterrors :build            # Errors from last build
-        geterrors :lint             # Errors from last lint
-        geterrors :test             # Errors from last test
-        geterrors :coverage         # Errors from last coverage
+        projux errors :build    : Errors from last build
+        projux errors :lint     : Errors from last lint
+        projux errors :test     : Errors from last test
+        projux errors :coverage : Errors from last coverage
+        projux errors foo.py    : Errors for file foo
 
-    geturl {:build|:test|:coverage|:bug <id>|:review <id>}
-      Returns URL with results for last build/test/coverage or for a bug/review.
+    $ projux url {:build|:lint|:test|:coverage|:bug|:review}
 
-    openbug <id>
-      Opens browser to URL for bug <id>.
+      Prints url summarizing last build, lint, etc (where applicable).
 
-    openreview <id>
-      Opens browser to URL for review <id>.
+      Examples:
+        projux url :build       : URL for last build
+        projux url :lint        : URL for last lint
+        projux url :test        : URL for last test
+        projux url :coverage    : URL for last coverage
+        projux url :bug         : URL for bug ID assigned to project
+        projux url :review      : URL for current project code review
 
-    openbuild
-      Opens browser to URL for last build results.
+    $ projux goto {:build|:lint|:test|:coverage|:bug|:review}
 
-    opentest
-      Opens browser to URL for last test results.
+      Opens url summarizing last build, lint, etc (where applicable).
 
-    opencoverage
-      Opens browser to URL for last coverage results.
+      Examples:
+        projux goto :build      : Open URL for last build
+        projux goto :lint       : Open URL for last lint
+        projux goto :test       : Open URL for last test
+        projux goto :coverage   : Open URL for last coverage
+        projux goto :bug        : Open URL for bug ID assigned to project
+        projux goto :review     : Open URL for current project code review
+
+    $ projux cat {:build|:lint|:test|:coverage}
+
+      Print output of last build, lint, etc (where applicable).
+
+      Examples:
+        projux cat :build       : Print output of last build
+        projux cat :lint        : Print output of last lint
+        projux cat :test        : Print output of last test
+        projux cat :coverage    : Print output of last coverage
+
+    $ projux vi {:build|:lint|:test|:coverage}
+
+      Vi output of last build, lint, etc (where applicable).
+
+      Examples:
+        projux vi :build        : Vi output of last build
+        projux vi :lint         : Vi output of last lint
+        projux vi :test         : Vi output of last test
+        projux vi :coverage     : Vi output of last coverage
+
 
 # Project Aliases
-    cdproject
-      cd $PROJECT_DIR
 
-    pushproject
-      pushd $PROJECT_DIR
+If PROJECT_ALIASES is set to to true, then an alias will be provided for all
+projux commands by prefixing each subcommand with ':'. For example:
 
-    cdsrc (also cdsrc2, ..., cdsrc5)
-      cd $PROJECT_SRC_DIR/$(arr=(${PROJECT_PKGS}); echo ${arr[0]})
+    :attach foo                  # projux attach foo
+    :build :lint                 # projux build :lint
+    ...
 
-    pushsrc (also pushsrc2, .. pushsrc5)
-      pushd $PROJECT_SRC_DIR/$(arr=(${PROJECT_PKGS}); echo ${arr[0]})
+In addition short cuts are provided for the most commonly used subcommands:
+    :a                            # projux attach
+    :b                            # projux build
+    :d                            # projux deploy
+    :f                            # projux format
+    :l                            # projux lint
+    :p                            # projux package
+    :r                            # projux run
+    :t                            # projux test
+    :w                            # projux win
 
-    cdtest (also cdtest2, ..., cdtest5)
-      cd $PROJECT_TEST_DIR/$(arr=(${PROJECT_PKGS}); echo ${arr[0]})
-
-    pushtest (also pushtest2, ..., pushtest5)
-      pushd $PROJECT_TEST_DIR/$(arr=(${PROJECT_PKGS}); echo ${arr[0]})
-
-    cdgen (also cdgen2, ..., cdgen5)
-      cd $PROJECT_GEN_DIR/$(arr=(${PROJECT_PKGS}); echo ${arr[0]})
-
-    pushgen (also pushgen2, ..., pushgen5)
-      pushd $PROJECT_GEN_DIR/$(arr=(${PROJECT_PKGS}); echo ${arr[0]})
-
-    cdbin
-      cd $PROJECT_BIN_DIR
-
-    pushbin
-      pushd $PROJECT_BIN_DIR
-
-    catlast
-      cat $PROJECT_LAST_OUT_DIR/last_run
-
-    vilast
-      vi $PROJECT_LAST_OUT_DIR/last_run
-
-    catlint
-      cat $PROJECT_TARGET_DIR/lint/last_run
-
-    vilint
-      vi $PROJECT_TARGET_DIR/lint/last_run
-
-    catbuild
-      cat $PROJECT_TARGET_DIR/build/last_run
-
-    vibuild
-      vi $PROJECT_TARGET_DIR/build/last_run
-
-    cattest
-      cat $PROJECT_TARGET_DIR/test/last_run
-
-    vitest
-      vi $PROJECT_TARGET_DIR/test/last_run
-
-    catcoverage
-      cat $PROJECT_TARGET_DIR/coverage/last_run
-
-    vicoverage
-      vi $PROJECT_TARGET_DIR/coverage/last_run
 
 # Environment Variables
 
@@ -724,18 +751,21 @@ the PROJECT_FORMAT_CMDS we could use the following to run clang-format on
 files of type *.{cc,h} and gofmt on files of type *.go, use:
 
         PROJECT_FORMAT_CMDS="\
-            cc:h::clang-format -i <targets> \
-            go::gofmt -tabs=false -tabwidth=2 -w <targets>"
+            cc:h::clang-format -i <flags> <targets> \
+            go::gofmt -tabs=false -tabwidth=2 -w <flags> <targets>"
 
-In this case the keywords <args> will be replaced with the args as passed
-while <target> will be replaced with the expanded targets per file type.
+In this case the literal string <flags> and <targets> will be replaced by the
+flags and expanded targets per file type. Any command line argument that starts
+with a '-' is considered a flag, while all others are considered targets of the
+command. If you just want the args as passed on the command line without
+expanding the targets, the literal string <args> can be used.
 
 Multiple commands can be run at once by separating them with ';'. For
 example, to run javacheck on *.java and both golint and govet on *.go files:
 
         PROJECT_LINT_CMDS="\
-            java::javacheck <targets> \
-            go::golint <targets>; govet <targets>"
+            java::javacheck <flags> <targets> \
+            go::golint <flags> <targets>; govet <flags> <targets>"
 
 3 Environment Variables with Selectable Commands
 
@@ -758,9 +788,9 @@ As mentioned, selectable commands allow you to select from one or more
 commands based on a key:: tag. However, you can also modify the flags that
 are associated with the selected command.
 
-        $run server --port=5678       # runs 'server -port=5678'
-        $run client --data=+c         # runs 'server -port=1234 -data=a,b,c'
-        $run client --data=-b,+e      # runs 'server -port=1234 -data=a,e'
+        $run server -port=5678       # runs 'server -port=5678'
+        $run client -data=+c         # runs 'server -port=1234 -data=a,b,c'
+        $run client -data=-b,+e      # runs 'server -port=1234 -data=a,e'
 
 ### Defaults
 
@@ -851,7 +881,7 @@ An environment variable `XXX` can have a default called `DEFAULT_XXX`. The
     PROJECT_GENDOCS_CMDS / DEFAULT_PROJECT_GENDOCS_CMDS
       Command(s) to use when gendocs called. A single command can be specified
       or a map of commands can used by labelling them as <key>::<cmd>
-      (e.g. scala::sbt doc go::godocs --http=:6060).
+      (e.g. scala::sbt doc go::godocs -http=:6060).
 
     PROJECT_SEARCH_CMDS / DEFAUT_PROJECT_SEARCH_CMDS
       Command(s) to use when search called. A single command can be specified
@@ -863,27 +893,40 @@ An environment variable `XXX` can have a default called `DEFAULT_XXX`. The
     PROJECT_FORMAT_CMDS / DEFAULT_PROJECT_FORMAT_CMDS
       Map of commands to run when formatting project files. The map should
       have the form: <file_ext>:...<file_ext>::<cmd>;...;<cmd> ...
-      (e.g. "cc:h::clang-format -i <targets> go::gofmt -w <targets>")
+      The literal strings <flags> and <targets> (or <args>) can be used as
+      placeholders for the flags and targets passed to projux format.
+      (e.g. "cc:h::clang-format -i <flags> <targets>
+      go::gofmt -w <flags> <targets>")
 
     PROJECT_LINT_CMDS / DEFAULT_PROJECT_LINT_CMDS
       Map of commands to run when linting project files. The map should
       have the form: <file_ext>:...<file_ext>::<cmd>;...;<cmd> ...
-      (e.g. "cc:h::clint <targets> go::golint <targets>; govet <targets>")
+      The literal strings <flags> and <targets> (or <args>) can be used as
+      placeholders for the flags and targets passed to projux format.
+      (e.g. "go::golint <flags> <targets>; govet <flags> <targets>
+      cc:h::clint <flags> <targets>")
 
     PROJECT_BUILD_CMDS / DEFAULT_PROJECT_BUILD_CMDS
       Map of commands to run when compling project files. The map should
       have the form: <file_ext>:...<file_ext>::<cmd>;...;<cmd> ...
-      (e.g. "cc:h::make scala::scalac <targets> java::javac <targets>")
+      The literal strings <flags> and <targets> (or <args>) can be used as
+      placeholders for the flags and targets passed to projux format.
+      (e.g. "cc:h::make <flags> <targets> scala::scalac <flags> <targets>
+      java::javac <flags> <targets>")
 
     PROJECT_TEST_CMDS / DEFAULT_PROJECT_TEST_CMDS
       Map of commands to run when testing project files. The map should
       have the form: <file_ext>:...<file_ext>::<cmd>;...;<cmd> ...
-      (e.g. "scala::sbt test <args>")
+      The literal strings <flags> and <targets> (or <args>) can be used as
+      placeholders for the flags and targets passed to projux format.
+      (e.g. "scala::sbt test <flags> <targets>")
 
     PROJECT_COVERAGE_CMDS / DEFAULT_PROJECT_COVERAGE_CMDS
       Map of commands to show code coverage of project tests. The map should
       have the form: <file_ext>:...<file_ext>::<cmd>;...;<cmd>,...
-      (e.g. "rb::coverage <args>")
+      The literal strings <flags> and <targets> (or <args>) can be used as
+      placeholders for the flags and targets passed to projux format.
+      (e.g. "rb::coverage <flags> <targets>")
 
     PROJECT_TEST_SUFFIXES / DEFAULT_PROJECT_TEST_SUFFIXES
       Map of suffixes used on test related files. This is used to distinguish
@@ -925,6 +968,7 @@ An environment variable `XXX` can have a default called `DEFAULT_XXX`. The
     PROJECT_SANITY_FN / DEFAULT_PROJECT_SANITY_FN
       Name of custom 'santity' function implementation.
 
+
 ## Sharing/Syncing/Backup/...
 
     PROJECT_SHARE_DIR / DEFAULT_PROJECT_SHARE_DIR
@@ -947,16 +991,16 @@ An environment variable `XXX` can have a default called `DEFAULT_XXX`. The
 
 ## Misc
     PROJUX_ALIASES
-      Set to true to add projux related aliases (cdsrc, etc). Default is true.
-
-    PROJUX_CMDS
-      Set to true to add projux related commands (format, lint, etc). Default is
-      true.
+      Set to true to add projux related aliases (:build, etc). Default is true.
 
     PROXY_CMDS
       Set to true to proxy commands to remote host when running locally. If not
       set, you must explicity attach to remote TMUX session to run commands.
       Default is false.
+
+    PROXY_NOTIFY_FN
+      Function to call whenever tmux new, attach, or switch is called. The first
+      parameter will be true if 'new' was used.
 
     VERBOSE
       Some commands take a VERBOSE environment variable. This is a level setting
@@ -987,7 +1031,7 @@ passing labels and flags to select the bash command that is ultimately invoked.
 
 # License
 
-Copyright 2012 - 2013 Mike Dreves
+Copyright 2012 - 2014 Mike Dreves
 
 All rights reserved. This program and the accompanying materials
 are made available under the terms of the Eclipse Public License v1.0

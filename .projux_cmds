@@ -1,5 +1,5 @@
 ###############################################################################
-# Copyright 2012-2013 Mike Dreves
+# Copyright 2012-2014 Mike Dreves
 #
 # All rights reserved. This program and the accompanying materials
 # are made available under the terms of the Eclipse Public License v1.0
@@ -16,42 +16,907 @@
 ###############################################################################
 
 ################################################################################
-# Commands Based on File Type
+# Projux command (see help and examples for more info).
+#
+# REQUIREMENTS: project entries have been added to ~/.projects
+#
+# Project Settings Subcommands
+#   ls
+#   settings [<project>]
+#   bin
+#   flags
+#   var {get|set|update|clear} {:test|:run} [+-]<test_targets|run_flags>
+#
+# Remote Project Management Subcommands
+#   sync [<project>]
+#   ssh [<project>]
+#   sftp [<project>]
+#
+# Project Session Management Subcommmands:"
+#   sessions
+#   attach <project> [<instance>]
+#   detach [<project>] [<instance>]
+#   kill [<project>] [<instance>]
+#   clear
+#   reload
+#   win [<win>|:default|:delete [<win>]|:new <win>]
+#   pane [<pane>|:delete [<pane>]|:split|:vsplit]
+#
+# Project File and Directory Management Subcommmands:
+#   cd {:bin|:gen [#]|:project|:src [#]|:test [#]}
+#   pushd {:bin|:gen [#]|:project|:src [#]|:test [#]}
+#
+# Project Tools Subcommmands:
+#   format [-p <project>] [<targets>]
+#   lint [-p <project>] [<targets>]
+#   build [-p <project>] [<targets>]
+#   test [-p <project>] [<targets>]
+#   coverage [-p <project>] [<targets>]
+#   run [-p <project>] [<flags>]
+#   clean [-p <project>]
+#   package [-p <project>]
+#   deploy [-p <project>]
+#   gendocs [-p <project>]
+#   search [-p <project>] <tags>
+#   sanity [-p <project>]
+#   share [-p <project>] [<prog>]
+#   backup [-p <project>]
+#   vimserver [-p <project>]
+#   sbt
+#
+# Project Output Subcommands:
+#   errors [-p <project>] {:lint|:build|:test|:coverage|<file>}
+#   url [-p <project>] {:build|:test|:coverage|:bug|:review}
+#   goto [-p <projec>] {:build|:test|:coverage|:bug|:review}
+#   cat [:lint|:build|:test|:coverage]
+#   vi [:lint|:build|:test|:coverage]
+################################################################################
+function projux() {
+  shopt -q nocasematch
+  local orig_nocasematch=$?
+  shopt -s nocasematch
+
+  ##############################################################################
+  # Help
+  #
+  if [[ "${1}" == "help" ]]; then
+    __projux_help
+    return $?
+  elif [[ "${1}" == "examples" ]]; then
+    __projux_examples ${*:2}
+    return $?
+  fi
+  ##############################################################################
+
+  ##############################################################################
+  # These commands don't need the active session info
+  #
+  if [[ "${1}" == "backup" ]]; then
+    __projux_backup ${*:2}
+    return $?
+  elif [[ "${1}" == "bin" ]]; then
+    __projux_bin_path ${*:2}
+    return $?
+  elif [[ "${1}" == "build" ]]; then
+    __projux_build ${*:2}
+    return $?
+  elif [[ "${1}" == "cat" ]]; then
+    __projux_cat ${*:2}
+    return $?
+  elif [[ "${1}" == "cd" ]]; then
+    __projux_cd ${*:2}
+    return $?
+  elif [[ "${1}" == "clear" ]]; then
+    __projux_project_clear "${PROJECT_NAME}"
+    return $?
+  elif [[ "${1}" == "clean" ]]; then
+    __projux_clean ${*:2}
+    return $?
+  elif [[ "${1}" == "coverage" ]]; then
+    __projux_coverage ${*:2}
+    return $?
+  elif [[ "${1}" == "deploy" ]]; then
+    __projux_deploy ${*:2}
+    return $?
+  elif [[ "${1}" == "errors" ]]; then
+    __projux_errors ${*:2}
+    return $?
+  elif [[ "${1}" == "flags" ]]; then
+    __projux_bin_flags ${*:2}
+    return $?
+  elif [[ "${1}" == "format" ]]; then
+    __projux_format ${*:2}
+    return $?
+  elif [[ "${1}" == "gendocs" ]]; then
+    __projux_gendocs ${*:2}
+    return $?
+  elif [[ "${1}" == "lint" ]]; then
+    __projux_lint ${*:2}
+    return $?
+  elif [[ "${1}" == "ls" ]]; then
+    __projux_project_ls ${*:2}
+    return $?
+  elif [[ "${1}" == "package" ]]; then
+    __projux_package ${*:2}
+    return $?
+  elif [[ "${1}" == "pane" ]]; then
+    __projux_pane ${*:2}
+    return $?
+  elif [[ "${1}" == "pushd" ]]; then
+    __projux_pushd ${*:2}
+    return $?
+  elif [[ "${1}" == "reload" ]]; then
+    __projux_project_init "${PROJECT_NAME}"
+    return $?
+  elif [[ "${1}" == "run" ]]; then
+    __projux_run ${*:2}
+    return $?
+  elif [[ "${1}" == "sanity" ]]; then
+    __projux_sanity ${*:2}
+    return $?
+  elif [[ "${1}" == "sbt" ]]; then
+    __projux_sbt ${*:2}
+    return $?
+  elif [[ "${1}" == "search" ]]; then
+    __projux_search ${*:2}
+    return $?
+  elif [[ "${1}" == "sessions" ]]; then
+    tmux ls -F"#{session_name}"
+    return $?
+  elif [[ "${1}" == "sftp" ]]; then
+    __projux_sftp ${*:2}
+    return $?
+  elif [[ "${1}" == "share" ]]; then
+    __projux_share ${*:2}
+    return $?
+  elif [[ "${1}" == "sync" ]]; then
+    __projux_sync ${*:2}
+    return $?
+  elif [[ "${1}" == "goto" ]]; then
+    __projux_goto ${*:2}
+    return $?
+  elif [[ "${1}" == "ssh" ]]; then
+    __projux_ssh ${*:2}
+    return $?
+  elif [[ "${1}" == "test" ]]; then
+    __projux_test ${*:2}
+    return $?
+  elif [[ "${1}" == "url" ]]; then
+    __projux_url ${*:2}
+    return $?
+  elif [[ "${1}" == "var" ]]; then
+    __projux_var ${*:2}
+    return $?
+  elif [[ "${1}" == "vi" ]]; then
+    __projux_vi ${*:2}
+    return $?
+  elif [[ "${1}" == "vimserver" ]]; then
+    __projux_vimserver ${*:2}
+    return $?
+  elif [[ "${1}" == "win" ]]; then
+    __projux_win ${*:2}
+    return $?
+  fi
+  ##############################################################################
+
+  # Gets session and project information
+  local cur_session=""
+  if [[ -n "${TMUX}" ]]; then
+    cur_session=$(tmux display-message -p "#S" 2> /dev/null)
+  fi
+  if [[ -z "${1}" ]]; then
+    if [[ -n "${cur_session}" ]]; then
+      echo "${cur_session} (attached)"
+    else
+      echo "Not attached"
+    fi
+    return $?
+  fi
+
+  local project_name="${PROJECT_NAME-$(__projux_default_project)}"
+  local instance=""
+  if [[ "${1}" == "attach" || "${1}" == "backup" || "${1}" == "detach" || \
+        "${1}" == "kill" || "${1}" == "settings" ]]; then
+    if [[ -n "${2}" ]]; then
+      if [[ "${2}" =~ ^[0-9]+$ ]]; then
+        instance="${2}"  # e.g. xxx 2
+      else
+        project_name="${2}" # e.g. xxx foo
+        if [[ -n "${3}" ]]; then
+          instance="${3}"  # e.g. xxx foo 2
+        fi
+      fi
+    elif [[ "${cur_session}" =~ _[0-9]+$ ]]; then
+      instance="${cur_session:${#cur_session}-1}" # default project/instance
+    fi
+  # This feature is no longer supported
+  #
+  # Previously, we supported 'projux <project>' as shortcut for
+  # 'projux attach <project>', but it is better to be explicit and avoid
+  # namespace collisions
+  # elif [[ -n "${1}" ]]; then
+  #   if [[ "${1}" =~ _[0-9]+$ ]]; then  # foo_2
+  #     project_name="${1:0:${#1}-2}"  # foo
+  #     instance="${1:${#1}-1}"  # 2
+  #   else
+  #     project_name="${1}"  # foo
+  #     if [[ "${2}" =~ ^[0-9]+$ ]]; then
+  #       instance="${2}"  # e.g. foo 2
+  #     fi
+  #   fi
+  fi
+
+  # Validate the project exists
+  if ! __projux_project_exists "${project_name}"; then
+    local msg
+    msg="Project entry for '${project_name}' not found in ~/.projects"
+    echo "$(tput setaf 1)${msg}$(tput sgr0)"
+    if [[ $orig_nocasematch -eq 1 ]]; then shopt -u nocasematch; fi
+    return 1
+  fi
+
+  # Session id is used by many commands, save it in var
+  if [[ -z "${instance}" || "${instance}" == "1" ]]; then
+    local session="${project_name}"
+  else
+    local session="${project_name}_${instance}"
+  fi
+
+  ##############################################################################
+  # These commands require project name
+  #
+  if [[ "${1}" == "attach" ]]; then
+    # Connect to project (this handles cases where we are already in project)
+    # NOTE: Always set project vars before cmd (may be project specific host)
+    env_vars=$(__projux_project_vars "${project_name}")
+    eval "${env_vars} __projux_attach ${project_name} ${instance}"
+  elif [[ "${1}" == "detach" ]]; then
+    if [[ -z "${2}" ]]; then
+      tmux detach  # no session specified, only detach this client
+    else
+      tmux detach -s "${session}"  # detach all clients attach to passed session
+    fi
+  elif [[ "${1}" == "kill" ]]; then
+    if [[ ! "${2}" =~ [0-9] && ! "${3}" =~ [0-9] ]]; then
+      # Kill sub-sessions too
+      for s in `tmux ls -F"#{session_name}" | grep ${project_name}`; do
+        # Don't kill cur session or will lose session before sub-sessions killed
+        if [[ "${cur_session}" != "${s}" ]]; then
+          tmux kill-session -t "${s}"
+        fi
+      done
+    fi
+    tmux kill-session -t "${session}" &> /dev/null
+  elif [[ "${1}" == "settings" ]]; then
+    __projux_project_settings "${project_name}"
+  # This feature is no longer supported
+  #
+  # Previously, we supported running outside of tmux or without using the
+  # attach command. This is deprecated.
+  # else
+  #   if [[ -z "${cur_session}" ]]; then
+  #     # This block allows running outside of tmux
+  #     if [[ -n "${instance}" ]]; then
+  #       local msg="ERROR: Must be attached to use multiple project instances"
+  #       echo "$(tput setaf 1)${msg}$(tput sgr0)"
+  #       return 1
+  #     else
+  #       # Not attached, just init proj
+  #       __projux_project_init "${project_name}"
+  #     fi
+  #   else
+  #     env_vars=$(__projux_project_vars "${project_name}" 1)
+  #     eval "${env_vars} __projux_attach ${project_name} ${instance}"
+  #   fi
+  else
+    echo "$(tput setaf 1)ERROR: unknown projux command '${1}'$(tput sgr0)"
+    return 1
+  fi
+  ##############################################################################
+
+  if [[ $orig_nocasematch -eq 1 ]]; then shopt -u nocasematch; fi
+
+  return 0
+}
+
+################################################################################
+# Help.
+################################################################################
+function __projux_help() {
+  echo ""
+  echo "Syntax:"
+  echo "  projux <subcommand>"
+  echo ""
+  echo "Project Settings Subcommands:"
+  echo "  ls                                    - list projects"
+  echo "  settings [<project>]                  - show project settings"
+  echo "  bin                                   - show full path to run binary"
+  echo "  flags                                 - show flags for run binary"
+  echo "  var get {:test [+-]<test_targets>|:run [+/-]<run_flags>}"
+  echo "  var set {:test [+-]<test_targets>|:run [+/-]<run_flags>}"
+  echo "  var update {:test [+-]<test_targets>|:run [+/-]<run_flags>}"
+  echo "  var clear {:test [+-]<test_targets>|:run [+/-]<run_flags>}"
+  echo ""
+  echo "Remote Project Management Subcommands:"
+  echo "  sync [<project>]                      - sync project files"
+  echo "  ssh [<project>]                       - ssh to project server"
+  echo "  sftp [<project>]                      - sftp to project server"
+  echo ""
+  echo "Project Session Management Subcommmands:"
+  echo "  sessions                              - list attached sessions"
+  echo "  attach <project> [<instance>]         - attach to projux in tmux"
+  echo "  detach [<project>] [<instance>]       - detach from tmux"
+  echo "  kill [<project>] [<instance>]         - kill tmux"
+  echo "  clear                                 - clears project settings"
+  echo "  reload                                - reloads project settings"
+  echo "  win [<win>|:default|:delete <win>|:new <win>] - tmux win management"
+  echo "  pane [<pane>|:delete [<pane>]|:split|:vsplit] - tmux pane management"
+  echo ""
+  echo "Project File and Directory Management Subcommands:"
+  echo "  cd {:bin|:gen [#]|:project|:src [#]|:test [#]}"
+  echo "  pushd {:bin|:gen [#]|:project|:src [#]|:test [#]}"
+  echo ""
+  echo "Project Tools Subcommmands: <cmd> [-p <project>] <opts>"
+  echo "  format [<targets>]                    - formats targets"
+  echo "  lint [<targets>]                      - lints targets"
+  echo "  build [<targets>]                     - build targets"
+  echo "  test [<targets>]                      - runs test targets"
+  echo "  coverage [<targets>]                  - runs code coverage"
+  echo "  run [<flags>]                         - runs program"
+  echo "  clean                                 - clears project tmp files"
+  echo "  package                               - packages project output"
+  echo "  deploy                                - deploys project output"
+  echo "  gendocs                               - generates project docs"
+  echo "  search <tags>                         - searches code for tags"
+  echo "  sanity                                - runs sanity check"
+  echo "  share [<prog>]                        - copy prog to ~/Public"
+  echo "  backup                                - backup files not in git"
+  echo "  vimserver                             - run server mode vim"
+  echo "  sbt                                   - run scala sbt"
+  echo ""
+  echo "Project Output Subcommmands:"
+  echo "  errors {:lint|:build|:test|:coverage|<file>}"
+  echo "  url {:build|:test|:coverage|:bug|:review}"
+  echo "  goto {:build|:test|:coverage|:bug|:review}"
+  echo "  cat [:lint|:build|:test|:coverage]"
+  echo "  vi [:lint|:build|:test|:coverage]"
+  echo ""
+  echo "For examples run: 'projux examples'"
+  echo ""
+}
+
+################################################################################
+# Examples.
+################################################################################
+function __projux_examples() {
+  echo ""
+  case "${1}" in
+    "var")
+      echo '# Echo $PROJECT_TEST_TARGETS'
+      echo "projux var get :test"
+      echo ""
+      echo '# Set $PROJECT_TEST_TARGETS'
+      echo "projux var set :test foo_test ../common/bar_test"
+      echo ""
+      echo '# Update $PROJECT_TEST_TARGETS'
+      echo "projux var update :test +foo_test -../common/bar_test"
+      echo ""
+      echo '# Clear $PROJECT_TEST_TARGETS'
+      echo "projux var clear :test"
+      echo ""
+      echo '# Echo $PROJECT_RUN_CMDS'
+      echo "projux var get :run"
+      echo ""
+      echo '# Echo $PROJECT_RUN_CMDS command labeled with xxx::'
+      echo "projux var get :run xxx"
+      echo ""
+      echo '# Echo command labeled with xxx:: and add bar to my_flag'
+      echo "projux var get :run xxx -my_flag=+bar"
+      echo ""
+      echo '# Set $PROJECT_RUN_CMDS'
+      echo "projux var set :run xxx::prog -someflag=val yyy::prog2 -other"
+      echo ""
+      echo '# Update $PROJECT_RUN_CMDS'
+      echo "projux var update :run xxx::prog -someflag=+some_value,-other_value"
+      echo ""
+      echo '# Clear $PROJECT_RUN_CMDS'
+      echo "projux var clear :run"
+      ;;
+
+    "format")
+      echo "Format:"
+      echo "-------------------------------------------------------------------"
+      echo "projux format                        # format recursively"
+      echo "projux format ...                    # as above"
+      echo "projux format foo.cc                 # format specific file"
+      echo "projux format :project               # format project src/test dirs"
+      echo "cat foo | FILE_TYPE=cc projux format # format stdin"
+      ;;
+
+    "lint")
+      echo "Lint:"
+      echo "-------------------------------------------------------------------"
+      echo "projux lint                          # lint recursively"
+      echo "projux lint ...                      # as above"
+      echo "projux lint foo.cc                   # lint specific file"
+      echo "projux lint :project                 # lint project src/test dirs"
+      echo "cat foo | FILE_TYPE=cc projux lint   # lint stdin"
+      ;;
+
+    "build")
+      echo "Build:"
+      echo "-------------------------------------------------------------------"
+      echo "projux build                         # build recursively"
+      echo "projux build ...                     # as above"
+      echo "projux build foo.scala               # build specific file"
+      echo "projux build :project                # build project src/test dirs"
+      echo "cat foo | FILE_TYPE=cc projux build  # build stdin"
+      ;;
+
+    "test")
+      echo "Test:"
+      echo "-------------------------------------------------------------------"
+      echo "projux test foo_class_test           # test foo_class_test"
+      echo "projux test foo_class_test.cc        # as above (auto removes .cc)"
+      echo "projux test                          # test recursively"
+      echo "projux test ...                      # as above"
+      echo "projux test :project                 # files in project test dir"
+      ;;
+
+    "coverage")
+      echo "Coverage:"
+      echo "-------------------------------------------------------------------"
+      echo "projux coverage foo_class_test       # coverage of foo_class_test"
+      echo "projux coverage foo_class_test.cc    # as above (auto removes .cc)"
+      echo "projux coverage                      # coverage recursively"
+      echo "projux coverage ...                  # as above"
+      echo "projux coverage :project             # files in project test dir"
+      ;;
+
+    "run")
+      echo "Run:"
+      echo "-------------------------------------------------------------------"
+      echo "projux run                 # run 1st entry in ${PROJECT_RUN_CMDS}"
+      echo "projux run prg             # run 'prg' entry in ${PROJECT_RUN_CMDS}"
+      echo "projux run prg -foo=+x,+y  # add 'bar' and 'baz' to -foo flag"
+      echo "projux run prg -foo=-bar   # remove 'bar' from -foo flag"
+      echo "projux run prg -foo=bar    # run with -foo flag set to bar"
+      echo "projux run -shared prg     # run copy of prg binary in ~/Public"
+      ;;
+
+    "errors")
+      echo "Errors:"
+      echo "-------------------------------------------------------------------"
+      echo "projux errors :lint        # display errors from last call to lint"
+      echo "projux errors :build       # display errors from last call to build"
+      echo "projux errors :test        # display errors from last call to test"
+      echo "projux errors :coverage    # display errors from last coverage"
+      echo "projux errors foo.py       # display current foo.py errors"
+      ;;
+
+    "url")
+      echo "URL:"
+      echo "-------------------------------------------------------------------"
+      echo "projux url :review         # display default code review url"
+      echo "projux url :review xxx     # display code review url for xxx"
+      echo "projux url :bug            # display default bug url for project"
+      echo "projux url :bug xxx        # display bug url for xxx"
+      echo "projux url :build          # display url for last build"
+      echo "projux url :test           # display url for last test"
+      echo "projux url :coverage       # display url for last coverage"
+      ;;
+
+    "goto")
+      echo "GOTO:"
+      echo "-------------------------------------------------------------------"
+      echo "projux goto :review        # open default code review url"
+      echo "projux goto :review xxx    # open code review url for xxx"
+      echo "projux goto :bug           # open default bug url for project"
+      echo "projux goto :bug xxx       # open bug url for xxx"
+      echo "projux goto :build         # open url for last build"
+      echo "projux goto :test          # open url for last test"
+      echo "projux goto :coverage      # open url for last coverage"
+      ;;
+
+    *)
+      echo "Project Settings:"
+      echo "-------------------------------------------------------------------"
+      echo "projux                 # show current project"
+      echo "projux ls              # show all known projects"
+      echo "projux settings        # show project env var settings"
+      echo "projux settings foo    # show project foo's env var settings"
+      echo "projux bin foo         # print path to project foo's output binary"
+      echo "projux flags           # pretty print flags for all commands"
+      echo "projux flags bar       # pretty print flags for bar command"
+      echo ""
+      echo "Remote Project Management:"
+      echo "-------------------------------------------------------------------"
+      echo "projux sync            # syncs local files with default remote host"
+      echo "projux sync foo        # syncs files with project foo's remote host"
+      echo "projux ssh             # SSH to default remote host for projects"
+      echo "projux ssh foo         # SSH to remote host for project foo"
+      echo "projux sftp            # SFTP to default remote host for projects"
+      echo "projux sftp foo        # SFTP to remote host for project foo"
+      echo ""
+      echo "Project Session Management:"
+      echo "-------------------------------------------------------------------"
+      echo "projux sessions        # show all active project sessions"
+      echo "projux attach foo 1    # attach/switch to session 1 of foo project"
+      echo "projux attach foo 3    # attach/switch to session 3 of foo project"
+      echo "projux detach          # detach cur client from cur project"
+      echo "projux detach foo      # detach all clients attached to foo project"
+      echo "projux detach foo 2    # detach all clients on 2nd session of foo"
+      echo "projux kill            # kill all of current project's tmux session"
+      echo "projux kill foo        # kill all of foo project's tmux sessions"
+      echo "projux kill foo 1      # kill main session of project foo"
+      echo "projux kill foo 2      # kill 2nd session of project foo"
+      echo "projux clear           # clear current project sessions vars"
+      echo "projux reload          # re-initialize project sessions vars"
+      echo "projux win             # list windows"
+      echo "projux win bash        # switch to bash window"
+      echo "projux win repl        # switch to repl window"
+      echo "projux win :new baz    # create new window named baz"
+      echo "projux win :default    # print default win for session (foo_2 => 2)"
+      echo "projux pane            # list panes"
+      echo "projux pane 3          # switch to pane 3  (ctrl-a o)"
+      echo "projux pane %5         # switch to pane with global id 5"
+      echo "projux pane :split     # create new horizontal pane"
+      echo "projux pane :vsplit    # create new vertial pane"
+      echo ""
+      echo "Project File and Directory Management:"
+      echo "-------------------------------------------------------------------"
+      echo "projux cd :project     # cd to root project dir"
+      echo "projux cd :src         # cd to $PROJECT_SRC_DIR/$PROJECT_PKGS[0]"
+      echo "projux cd :src 2       # cd to $PROJECT_SRC_DIR/$PROJECT_PKGS[1]"
+      echo "projux cd :test        # cd to $PROJECT_TEST_DIR/$PROJECT_PKGS[0]"
+      echo "projux cd :test 3      # cd to $PROJECT_TEST_DIR/$PROJECT_PKGS[2]"
+      echo "projux cd :bin         # cd to $PROJECT_BIN_DIR"
+      echo "projux cd :gen         # cd to $PROJECT_GEN_DIR/$PROJECT_PKGS[0]"
+      echo "projux cd :gen 2       # cd to $PROJECT_GEN_DIR/$PROJECT_PKGS[1]"
+      echo "projux pushd :src 2    # pushd to $PROJECT_SRC_DIR/$PROJECT_PKGS[1]"
+      echo ""
+      echo "Project Tools:"
+      echo "-------------------------------------------------------------------"
+      echo "projux format          # recursively format files"
+      echo "projux lint            # recursively lint files"
+      echo "projux build           # recursively build files"
+      echo "projux test            # recursively test files"
+      echo "projux coverage        # recursively run coverage on files"
+      echo "projux run             # runs default project run command"
+      echo "projux clean           # clears project temp (build, etc) files"
+      echo "projux package         # runs project package command"
+      echo "projux deploy          # runs project deploy command"
+      echo "projux gendocs         # runs project gendocs command"
+      echo "projux search foo      # search for 'foo' in project"
+      echo "projux sanity          # run project sanity command"
+      echo "projux share prg       # copies prg binary to $PROJECT_SHARE_DIR"
+      echo "projux backup          # backup changed files to $PROJECT_BACKUP_DIR"
+      echo ""
+      echo "Project Output:"
+      echo "-------------------------------------------------------------------"
+      echo "projux errors :lint    # prints errors from last lint run"
+      echo "projux url :build      # prints summary URL associated with last build"
+      echo "projux goto :build     # opens URL associated with last build"
+      echo "projux cat :lint       # cat output of last lint"
+      echo "projux vi :build       # vi output of last build"
+      echo
+      echo "More detailed examples:"
+      echo "-------------------------------------------------------------------"
+      echo "projux examples var"
+      echo "projux examples format"
+      echo "projux examples lint"
+      echo "projux examples build"
+      echo "projux examples test"
+      echo "projux examples coverage"
+      echo "projux examples run"
+      echo "projux examples errors"
+      echo "projux examples url"
+      echo "projux examples goto"
+      ;;
+  esac
+  echo ""
+}
+
+################################################################################
+# ** Project Settings **
 ################################################################################
 
 ################################################################################
-# Runs format.
-#
-# REQUIREMENTS: project env vars are properly set (via 'project <name>')
-#
-# By default, this function relies on the existance of a PROJECT_FORMAT_CMDS
-# (or DEFAULT_PROJECT_FORMAT_CMDS) environment varible that specifies which
-# format commands to run on different file types. If the default implementation
-# is not enough, then a custom function implementation can be provided using
-# PROJECT_FORMAT_FN.
-#
-# This function supports the ability to pass either stdin to be formatted or a
-# list of files. When no args are passed all files within the PROJECT_SRC_DIR
-# and PROJECT_TEST_DIR that match the PROJECT_INCLUDE_FILTER and
-# PROJECT_EXLUCDE_FILTER settings are used.
-#
-# When stdin is used, the environment varible FILE_TYPE must be set to
-# provide a hint about which format function to use.
-#
-# Examples:
-#   cat foo | FILE_TYPE=cc format  # format stdin
-#   format foo.cc                  # format specific file
-#   format                         # format recursively from current dir
-#   format ...                     # as above
-#   format :project                # format project src/test targets
-#   format -p xxx ...              # format recursively in project xxx
-#   VERBOSE=0 format
-#   DRY_RUN=true format
+# Lists projects.
+################################################################################
+function __projux_project_ls() {
+  while read line; do
+    if [[ "${line}" == "PROJECT_NAME"* ]]; then
+      echo "${line:13}"
+    fi
+  done < ~/.projects
+}
+
+################################################################################
+# Initializes project.
 #
 # Args:
-#   $*: Targets.
+#   $1: Project name
 ################################################################################
-function format() {
+function __projux_project_init() {
+  if [[ -z "${1}" ]]; then
+    return
+  fi
+
+  local project_name="${1}"
+
+  # Reset the defaults (no values are set unless they are configured in
+  # ~/.projects for this project, otherwise the defaults will take effect)
+  __projux_project_clear ${PROJECT_NAME}
+
+  local found=0
+  while read line; do
+    if [[ -z "${line}" || "${line}" == "#"* ]]; then
+      continue
+    fi
+    if [[ "${line}" == "PROJECT_NAME=${project_name}" ]]; then
+      local found=1
+    elif [[ ${found} -eq 1 && "${line}" == "PROJECT_NAME="* ]]; then
+      break
+    fi
+    if [[ ${found} -eq 1 ]]; then
+      if [[ "${line}" == alias* ]]; then
+        # 'alias foo=bar' entries
+        eval "${line}" &> /dev/null
+      else
+        # variable definitions
+        local var=${line%%=*}
+        local value=${line#*=}
+        # make sure quoted
+        if [[ "${value:0:1}" == '"' ]]; then
+          eval "export ${line}" &> /dev/null
+        else
+          eval "export ${var}=\"${value}\"" &> /dev/null
+        fi
+      fi
+    fi
+  done < ~/.projects
+}
+
+################################################################################
+# Shows project settings.
+#
+# Args:
+#   $1: Project name
+################################################################################
+function __projux_project_settings() {
+  local project_name="${1}"
+  local found=0
+  local padding="                             "
+  local project_vars=$(__projux_project_vars ${project_name})
+  local vars_echoed=()
+  while read line; do
+    if [[ "${line}" == "PROJECT_NAME=${project_name}" ]]; then
+      local found=1
+    elif [[ ${found} -eq 1 && "${line}" == "PROJECT_NAME="* ]]; then
+      break
+    fi
+    if [[ ${found} -eq 1 && ! ${line} == "#"* && ! "${line}" == "" ]]; then
+      local var="${line%%=*}"
+      local val="${line#*=}"
+      # Note: the ${project_vars} variable stores a space separated list of
+      #   var=value env settings for the chosen project. By passing this
+      #   list prior to calling echo we can resolve variables defined in
+      #   terms of other variables on a project specific basis (e.g. without
+      #   altering the current projects settings). However, we need to do a
+      #   double eval and put the expand of value of $val in single quotes or
+      #   else the current project values will override.
+      if [[ ${val} == *"$"* && ! ${var} == alias* ]]; then
+        val=$(eval "${project_vars} eval echo '""${val}""'")
+      fi
+      echo "${var}${padding:${#var}} : ${val}"
+      vars_echoed+=("${var}")
+    fi
+  done < ~/.projects
+
+  # Add missing defaults (only important ones)
+  local defaults=("PROJECT_HOST" "PROJECT_WINDOWS")
+  for def in "${defaults[@]}"; do
+    found=0
+    for var in "${vars_echoed[@]}"; do
+      if [[ "${def}" == "${var}" ]]; then
+        found=1
+        break
+      fi
+    done
+    if [[ ${found} -eq 0 ]]; then
+      local val_name='$DEFAULT_'"${def}"
+      local val=$(eval "echo $val_name")
+      echo "${def}${padding:${#def}} : ${val}"
+    fi
+  done
+}
+
+################################################################################
+# Clears all project vars.
+#
+# Args:
+#   $1: Project name
+################################################################################
+function __projux_project_clear() {
+  local project_name="${1}"
+
+  # Clear project specific vars
+  while read line; do
+    if [[ -z "${line}" || "${line}" == "#"* ]]; then
+      continue
+    fi
+    if [[ "${line}" == "PROJECT_NAME=${project_name}" ]]; then
+      local found=1
+    elif [[ ${found} -eq 1 && "${line}" == "PROJECT_NAME="* ]]; then
+      break
+    fi
+    if [[ ${found} -eq 1 ]]; then
+      if [[ "${line}" == alias* ]]; then
+        # 'unalias foo=bar' entries
+        eval "un${line%%=*}" &> /dev/null
+      else
+        # variable definitions
+        eval "unset ${line%%=*}" &> /dev/null
+      fi
+    fi
+  done < ~/.projects
+
+  unset PROJECT_LAST_OUT_DIR
+
+  # Leave at least the PROJECT_NAME var set so we can reload
+  export PROJECT_NAME="${project_name}"
+}
+
+################################################################################
+# Returns current project name.
+################################################################################
+function __projux_cur_project() {
+  local tmux_session=$(tmux display-message -p "#S" 2> /dev/null)
+  if [[ -n "${tmux_session}" ]]; then
+    if (__projux_project_ls) | grep -q "${tmux_session}"; then
+      echo "${tmux_session}"
+    fi
+  fi
+}
+
+################################################################################
+# Returns default project name.
+#
+# The default tmux session is defined in this order:
+#   * The current tmux session name matches a project in ~/.projects
+#   * The first entry in ~/.projects
+#   * "default"
+################################################################################
+function __projux_default_project() {
+  local tmux_session=$(tmux display-message -p "#S" 2> /dev/null)
+  if [[ -n "${tmux_session}" ]]; then
+    if (__projux_project_ls) | grep -q "${tmux_session}"; then
+      echo "${tmux_session}"
+      return
+    fi
+  fi
+
+  # head -1 would be easier, but can get broken pipe errors
+  local first=$(read -r line < <(__projux_project_ls); echo $line)
+  if [[ -n "$first" ]]; then
+    echo "${first}"
+  else
+    echo "default"
+  fi
+}
+
+################################################################################
+# Returns $? == 0 if project exists.
+#
+# Args:
+#   $1: Project name.
+################################################################################
+function __projux_project_exists() {
+  shopt -q nocasematch
+  local orig_nocasematch=$?
+  shopt -s nocasematch
+
+  while read line; do
+    if [[ "${line}" == "PROJECT_NAME"* && "${line:13}" == "${1}" ]]; then
+      if [[ $orig_nocasematch -eq 1 ]]; then shopt -u nocasematch; fi
+      return 0
+    fi
+  done < ~/.projects
+
+  if [[ $orig_nocasematch -eq 1 ]]; then shopt -u nocasematch; fi
+  return 1
+}
+
+################################################################################
+# Returns list of project vars (A=B C=D etc).
+#
+# Args:
+#   $1: Project name
+#   $2 (optional): 1 to not expand paths
+################################################################################
+function __projux_project_vars() {
+  local project_name="${1}"
+  local found=0
+  local vars=()
+
+  # Reset the defaults (these will be overridden if values are configured in
+  # ~/.projects for this project, otherwise these defaults will take effect)
+  vars+=("PROJECT_HOST=\"${DEFAULT_PROJECT_HOST}\"")
+  vars+=("PROJECT_WINDOWS=\"${DEFAULT_PROJECT_WINDOWS}\"")
+  vars+=("PROJECT_SHARE_DIR=\"${DEFAULT_PROJECT_SHARE_DIR}/${project_name}\"")
+  vars+=("PROJECT_BACKUP_DIR=\"${DEFAULT_PROJECT_BACKUP_DIR}/${project_name}\"")
+  vars+=("PROJECT_SYNC_LIST=\"${DEFAULT_PROJECT_SYNC_LIST}\"")
+  vars+=("PROJECT_SYNC_DESTS=\"${DEFAULT_PROJECT_SYNC_DESTS}\"")
+  vars+=("PROJECT_INCLUDE_FILTER=\"${DEFAULT_PROJECT_INCLUDE_FILTER}\"")
+  vars+=("PROJECT_EXCLUDE_FILTER=\"${DEFAULT_PROJECT_EXCLUDE_FILTER}\"")
+  vars+=("PROJECT_FORMAT_CMDS=\"${DEFAULT_PROJECT_FORMAT_CMDS}\"")
+  vars+=("PROJECT_LINT_CMDS=\"${DEFAULT_PROJECT_LINT_CMDS}\"")
+  vars+=("PROJECT_COMPILE_CMDS=\"${DEFAULT_PROJECT_COMPILE_CMDS}\"")
+  vars+=("PROJECT_TEST_CMDS=\"${DEFAULT_PROJECT_TEST_CMDS}\"")
+  vars+=("PROJECT_COVERAGE_CMDS=\"${DEFAULT_PROJECT_COVERAGE_CMDS}\"")
+  vars+=("PROJECT_RUN_CMDS=\"${DEFAULT_PROJECT_RUN_CMDS}\"")
+  vars+=("PROJECT_PACKAGE_CMDS=\"${DEFAULT_PROJECT_PACKAGE_CMDS}\"")
+  vars+=("PROJECT_DEPLOY_CMDS=\"${DEFAULT_PROJECT_DEPLOY_CMDS}\"")
+  vars+=("PROJECT_GENDOCS_CMDS=\"${DEFAULT_PROJECT_GENDOCS_CMDS}\"")
+  vars+=("PROJECT_SEARCH_CMDS=\"${DEFAULT_PROJECT_SEARCH_CMDS}\"")
+  vars+=("PROJECT_FORMAT_FN=\"${DEFAULT_PROJECT_FORMAT_FN}\"")
+  vars+=("PROJECT_LINT_FN=\"${DEFAULT_PROJECT_LINT_FN}\"")
+  vars+=("PROJECT_COMPILE_FN=\"${DEFAULT_PROJECT_COMPILE_FN}\"")
+  vars+=("PROJECT_TEST_FN=\"${DEFAULT_PROJECT_TEST_FN}\"")
+  vars+=("PROJECT_COVERAGE_FN=\"${DEFAULT_PROJECT_COVERAGE_FN}\"")
+  vars+=("PROJECT_GETERRORS_FN=\"${DEFAULT_PROJECT_GETERRORS_FN}\"")
+  vars+=("PROJECT_GETURL_FN=\"${DEFAULT_PROJECT_GETURL_FN}\"")
+  vars+=("PROJECT_SANITY_FN=\"${DEFAULT_PROJECT_SANITY_FN}\"")
+
+  while read line; do
+    if [[ "${line}" == "PROJECT_NAME=${project_name}" ]]; then
+      local found=1
+    elif [[ ${found} -eq 1 && "${line}" == "PROJECT_NAME="* ]]; then
+      break
+    fi
+    if [[ ${found} -eq 1 && ! "${line}" == "#"* && ! "${line}" == "" ]] && \
+        [[ "${line}" != alias* ]] && \
+        [[ "${2}" == "" || ${2} =~ "${line%%=*}" ]]; then
+      local var="${line%%=*}"
+      local val="${line#*=}"
+      if [[ "${val:0:1}" == '"' ]]; then
+        vars+=("${var}=${val}")
+      else
+        vars+=("${var}=\"${val}\"")
+      fi
+    fi
+  done < ~/.projects
+
+  echo "${vars[@]}"
+}
+
+################################################################################
+# Returns a specific project var value.
+#
+# Args:
+#   $1: Project name
+#   $2: Project var name
+################################################################################
+function __projux_project_var() {
+  local project_name="${1}"
+  local var_name="${2}"
+  # All project vars are passed prior to request specific var so that we can
+  # fully resolve vars made up of other vars
+  local project_vars=$(__projux_project_vars "${project_name}")
+  val=$(eval "${project_vars} eval echo '$""${var_name}""'")
+  echo "${val}"
+}
+
+################################################################################
+# Prints full path to project binary.
+#
+# REQUIREMENTS: project env vars are properly set (via 'projux attach <name>')
+#
+# Example:
+#   projux bin foo                          # show bin used by command foo
+################################################################################
+function __projux_bin_path() {
   local project_name="${PROJECT_NAME}"
   if [[ "${1}" == "-p" ]]; then
     shift
@@ -60,22 +925,770 @@ function format() {
   fi
 
   if [[ "${project_name%%:*}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
-    __projux_tmux_send "$(__default_project_win ${project_name})" "format" $*
+    if [[ "${1}" != "get" ]]; then
+      __projux_tmux_send \
+          "$(__projux_default_project_win ${project_name})" \
+          "__projux_bin_path" $*
+      return $?
+    fi
+  fi
+
+  local bin_dir=$(\
+      __projux_project_var ${project_name%%:*} PROJECT_BIN_DIR)
+  cmd=${bin_dir}/$(__projux_get_run_cmd ${project_name%%:*} $*)
+  echo ${cmd[0]}
+}
+
+################################################################################
+# Prints flags related to project binaries.
+#
+# REQUIREMENTS: project env vars are properly set (via 'projux attach <name>')
+#
+# Example:
+#   projux flags                            # pretty print flags for each cmd
+#   projux flags foo                        # pretty print flags for foo command
+################################################################################
+function __projux_bin_flags() {
+  local project_name="${PROJECT_NAME}"
+  if [[ "${1}" == "-p" ]]; then
+    shift
+    project_name="${1}"
+    shift
+  fi
+
+  if [[ "${project_name%%:*}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
+    if [[ "${1}" != "get" ]]; then
+      __projux_tmux_send \
+          "$(__projux_default_project_win ${project_name})" \
+          "__projux_bin_flags" $*
+      return $?
+    fi
+  fi
+
+  local cur=""
+  local cmd=""
+  if [[ $# -eq 0 ]]; then
+    cmd=$(__projux_project_var ${project_name%%:*} PROJECT_RUN_CMDS)
+  else
+    local bin_dir=$(\
+        __projux_project_var ${project_name%%:*} PROJECT_BIN_DIR)
+    cmd=${bin_dir}/$(__projux_get_run_cmd ${project_name%%:*} $*)
+  fi
+
+  # print each flag on a separate line
+  for arg in ${cmd}; do
+    if [[ -z "${cur}" ]]; then
+      cur=${arg}
+    elif [[ "${arg}" =~ "::" ]]; then
+      echo "${cur}"
+      cur=${arg}
+    else
+      echo "${cur}"
+      cur="    ${arg}"
+    fi
+  done
+  echo "${cur}"
+}
+
+################################################################################
+# Environment Variable Management Commands
+#
+# REQUIREMENTS: project env vars are properly set (via 'projux attach <name>')
+#
+# Example:
+#   # Echo $PROJECT_TEST_TARGET
+#   projux var get :test
+#
+#   # Set $PROJECT_TEST_TARGETS
+#   projux var set :test foo_test ../common/bar_test
+#
+#   # Update $PROJECT_TEST_TARGETS
+#   projux var update :test +foo_test -../common/bar_test
+#
+#   # Clear $PROJECT_TEST_TARGETS
+#   projux var clear :test
+#
+#
+#   # Echo $PROJECT_RUN_CMDS
+#   projux var get :run                     # get all run commands
+#   projux var get :run foo                 # Gets cmd labeled with foo::
+#   projux var get :run foo -my_flag=+bar   # Gets foo:: cmd and adds to flag
+#
+#   Set $PROJECT_RUN_CMDS
+#   projux var set :run foo::foo -someflag=some-value bar::bar -otherflag
+#
+#   # Update $PROJECT_RUN_CMDS
+#   projux var update :run foo::foo -someflag=+some-value,-other_value
+#
+#   # Clear $PROJECT_RUN_CMDS
+#   projux var clear :run
+################################################################################
+function __projux_var() {
+  local project_name="${PROJECT_NAME}"
+  if [[ "${1}" == "-p" ]]; then
+    shift
+    project_name="${1}"
+    shift
+  fi
+
+  if [[ "${project_name%%:*}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
+    if [[ "${1}" != "get" ]]; then
+      __projux_tmux_send \
+          "$(__projux_default_project_win ${project_name})" "__projux_var" $*
+      return $?
+    fi
+  fi
+
+  case "${1}" in
+    "get")
+      shift
+      case "${1}" in
+        ":test")
+          if [[ "${project_name%%:*}" != "${PROJECT_NAME}" ]]; then
+            echo "$(__projux_project_var ${project_name} PROJECT_TEST_TARGETS)"
+          else
+            echo "$PROJECT_TEST_TARGETS"
+          fi
+          ;;
+
+        ":run")
+          shift
+          if [[ $# -eq 0 ]]; then
+            local cmd=$(\
+                __projux_project_var ${project_name%%:*} PROJECT_RUN_CMDS)
+            if [[ "${cmd}" =~ "::" ]]; then
+              # Show names of commands
+              for arg in ${cmd}; do
+                if [[ "${arg}" =~ "::" ]]; then
+                  echo "${arg%%::*}"
+                fi
+              done
+              return
+            fi
+          else
+            local cmd=""
+            if [[ $# -eq 0 ]]; then
+              cmd=$(__projux_project_var ${project_name%%:*} PROJECT_RUN_CMDS)
+            else
+              local bin_dir=$(\
+                  __projux_project_var ${project_name%%:*} PROJECT_BIN_DIR)
+              cmd=${bin_dir}/$(__projux_get_run_cmd ${project_name%%:*} $*)
+            fi
+            echo "${cmd}"
+          fi
+          ;;
+
+        *)
+          echo "$(tput setaf 1)ERROR: unknown var ${1}$(tput sgr0)"
+          ;;
+      esac
+      ;;
+
+    "set")
+      shift
+      case "${1}" in
+        ":test")
+          local targets=""
+          for target in $(\
+              BASE_DIR=${PROJECT_DIR} __projux_normalize_targets "$@"); do
+            # Strip pre-package path
+            local normalized_target=${target##${PROJECT_TEST_DIR}}
+            # Remove any extension
+            if [[ -n "${normalized_target##*.}" ]]; then
+              normalized_target=${normalized_target%.*}
+            fi
+            local targets="${targets} ${normalized_target}"
+          done
+
+          export PROJECT_TEST_TARGETS="${targets}"
+          ;;
+
+        ":run")
+          shift
+          export PROJECT_RUN_CMDS="$*"
+          ;;
+
+        *)
+          echo "$(tput setaf 1)ERROR: unknown var ${1}$(tput sgr0)"
+          ;;
+      esac
+      ;;
+
+    "update")
+      shift
+      case "${1}" in
+        ":test")
+          shift
+          # Build list of added/removed items
+          local added=""
+          local removed=""
+          for arg in $*; do
+            if [[ "${arg}" == +* ]]; then
+              arg=${arg:1}
+              added="${add} ${arg}"
+            elif [[ "${arg}" == -* ]]; then
+              arg=${arg:1}
+              removed="${remove} ${arg}"
+            else
+              echo "$(tput setaf 3)Missing -/+ for arg ${arg}$(tput sgr0)"
+            fi
+          done
+
+          # Convert removed items to full targets
+          local removed_targets=""
+          for target in $(\
+              BASE_DIR=${PROJECT_DIR} __projux_normalize_targets ${removed}); do
+            # Strip pre-package path
+            local normalized_target=${target##${PROJECT_TEST_DIR}}
+            # Remove any extension
+            if [[ -n "${normalized_target##*.}" ]]; then
+              normalized_target=${normalized_target%.*}
+            fi
+            local removed_targets="${removed_targets} ${normalized_target}"
+          done
+
+          # Filter removed from current targets
+          local targets=""
+          pushd "${PROJECT_TEST_DIR}" &> /dev/null
+          for target in $(\
+                BASE_DIR=${PROJECT_DIR} \
+                __projux_normalize_targets ${PROJECT_TEST_TARGETS}); do
+            if [[ ! "${removed_targets}" == *"${target}"* ]]; then
+              if [[ -z "${targets}" ]]; then
+                local targets="${target}"
+              else
+                local targets="${targets} ${target}"
+              fi
+            fi
+          done
+          popd &> /dev/null
+
+          # Convert added items to full targets and add to current
+          for target in $(\
+              BASE_DIR=${PROJECT_DIR} __projux_normalize_targets ${added}); do
+            # Strip pre-package path
+            local normalized_target=${target##${PROJECT_TEST_DIR}}
+            # Remove any extension
+            if [[ -n "${normalized_target##*.}" ]]; then
+              normalized_target=${normalized_target%.*}
+            fi
+            if [[ ! "${targets}" == *"${target}"* ]]; then
+              if [[ -z "${targets}" ]]; then
+                local targets="${normalized_target}"
+              else
+                local targets="${targets} ${normalized_target}"
+              fi
+            fi
+          done
+
+          export PROJECT_TEST_TARGETS="${targets}"
+          ;;
+
+        ":run")
+          shift
+          local run_cmd=""
+          # Loop over current run commands looking for things to update
+          local skip=0
+          for token in $(echo ${PROJECT_RUN_CMDS}); do
+            # If start of a command
+            if [[ "${token}" == *::* ]]; then
+              local skip=0
+              local cmd_name=${token%%::*}
+              # If command passed as arg then update it
+              if [[ "$@" == "${cmd_name}"* ]]; then
+                local cmd=$(__projux_get_run_cmd ${project_name%%:*} "$@")
+                if [[ -z "${run_cmd}" ]]; then
+                  local run_cmd="${cmd_name}::${cmd}"
+                else
+                  local run_cmd="${run_cmd} ${cmd_name}::${cmd}"
+                fi
+                local skip=1
+              fi
+            fi
+            if [[ $skip -eq 0 ]]; then
+              if [[ -z "${run_cmd}" ]]; then
+                local run_cmd="${token}"
+              else
+                local run_cmd="${run_cmd} ${token}"
+              fi
+            fi
+          done
+
+          export PROJECT_RUN_CMDS="${run_cmd}"
+          ;;
+
+        *)
+          echo "$(tput setaf 1)ERROR: unknown var ${1}$(tput sgr0)"
+          ;;
+
+      esac
+      ;;
+
+    "clear")
+      shift
+      case "${1}" in
+        ":test")
+          export PROJECT_TEST_TARGETS=""
+          ;;
+
+        ":run")
+          export PROJECT_RUN_CMDS=""
+          ;;
+
+        *)
+          echo "$(tput setaf 1)ERROR: unknown var ${1}$(tput sgr0)"
+          ;;
+      esac
+      ;;
+
+    *)
+     echo "$(tput setaf 1)ERROR: unknown command ${1}$(tput sgr0)"
+     ;;
+  esac
+}
+
+
+################################################################################
+# ** Remote Project Management **
+################################################################################
+
+################################################################################
+# Syncs local and remote project files.
+#
+# Args:
+#   $1: Project name
+################################################################################
+function __projux_sync() {
+  local project_name="${1}"
+
+  local project_host=$(__projux_project_var "${project_name}" "PROJECT_HOST")
+  if [[ -z "${project_host}" ]]; then
+    project_host="${DEFAULT_PROJECT_HOST}"
+  fi
+
+  local project_sync_dests=$(\
+      __projux_project_var "${project_name}" "PROJECT_SYNC_DESTS")
+  if [[ -z "${project_sync_dests}" ]]; then
+    project_sync_dests="${DEFAULT_PROJECT_SYNC_DESTS}"
+  fi
+
+  local project_sync_list=$(\
+      __projux_project_var "${project_name}" "PROJECT_SYNC_LIST")
+  if [[ -z "${project_sync_list}" ]]; then
+    project_sync_list="${DEFAULT_PROJECT_SYNC_LIST}"
+  fi
+
+  local first_dir=${project_sync_dests%%,*}
+  OLDIFS=$IFS
+  IFS=$','
+  for dir in ${project_sync_dests}; do
+    rsync -ravz --files-from=${project_sync_list} \
+      --exclude="tags" --exclude="tags-ja" ~ -e ssh ${project_host}:${dir}
+  done
+  IFS=$OLDIFS
+
+  return 0
+}
+
+################################################################################
+# SSH to project host
+#
+# Args:
+#   $1: Project name
+################################################################################
+function __projux_ssh() {
+  local project_name="${1}"
+
+  local project_host=$(__projux_project_var "${project_name}" "PROJECT_HOST")
+  if [[ -z "${project_host}" ]]; then
+    project_host="${DEFAULT_PROJECT_HOST}"
+  fi
+
+  ssh -Y -t ${project_host}
+}
+
+################################################################################
+# SFTP to project host
+#
+# Args:
+#   $1: Project name
+################################################################################
+function __projux_sftp() {
+  local project_name="${1}"
+
+  local project_host=$(__projux_project_var "${project_name}" "PROJECT_HOST")
+  if [[ -z "${project_host}" ]]; then
+    project_host="${DEFAULT_PROJECT_HOST}"
+  fi
+
+  sftp ${project_host}
+}
+
+
+################################################################################
+# ** Project Session Management **
+################################################################################
+
+################################################################################
+# Attach/switch to local/remote project tmux session.
+#
+# By default the first session is created under the project name. Since it is
+# desirable to support connecting more than one terminal to the same project
+# session, an optional session instance may be provided that will create a new
+# grouped session under the name <project>_<instance>.
+#
+# NOTE: By default sessions will try to attach to windows at the corresponding
+#   (1-based) offset in PROJECT_WINDOWS (handled when projectrc sourced).
+#
+# For example, if project 'foo' has PROJECT_WINDOWS=bash::vim:: then:
+#
+#   project foo     # creates 'foo' session, opens win 'bash'
+#   project foo 2   # creates 'foo_2' grouped session to 'foo', opens win 'vim'
+#
+# Note, if no project is passed to project attach, then the default project is
+# used (the first one listed in ~/.projects).
+#
+# Args:
+#   $1 (optional): Project name (e.g. main tmux session name)
+#   $2 (optional): Session instance (e.g. group session number)
+################################################################################
+function __projux_attach() {
+  local project_name="${1}"
+  local instance_suffix=""
+  if [[ -n "${2}" && ${2} -ne 1 ]]; then
+    instance_suffix="_${2}"
+  fi
+  local session="${project_name}${instance_suffix}"
+
+  # Get current session (TMUX env var must be set to be in a session,
+  # display-message works whether attached or not)
+  local cur_session=""
+  if [[ -n "${TMUX}" ]]; then
+    cur_session=$(tmux display-message -p '#S' 2> /dev/null)
+  fi
+
+  if [[ "${session}" == "${cur_session}" ]]; then
+    # Already in proper session, do nothing except reload vars
+    __projux_project_init "${project_name}"
+    return 0
+  fi
+
+  if [[ -n "${TMUX}" ]] && \
+        tmux list-sessions 2> /dev/null | grep -q "${session}:"; then
+    # Session we are attaching to exists, just switch
+    local cmd="__projux_notify false && tmux switch -t ${session} &> /dev/null"
+  else
+    # Commands to create a new session
+    local new_session=""
+    local win
+    local project_wins=$(\
+        __projux_project_var "${project_name}" "PROJECT_WINDOWS")
+    eval "$(__projux_key_value_list kv_list ${project_wins})"
+    for win in "${kv_list[@]}"; do
+      cmd=${win##*::}
+      win=${win%::*}
+      if [[ -z "${new_session}" ]]; then
+        # Pass empty TMUX env var to keep tmux happy when creating
+        # from within tmux
+        new_session="\
+            TMUX= tmux new -d -s ${project_name} -n ${win} '${cmd}' \
+            &> /dev/null"
+      else
+        # Create other windows listed in PROJECT_WINDOWS env var
+        new_session="\
+            ${new_session} && tmux new-window -t ${project_name} -d \
+            -n ${win} '${cmd}' &> /dev/null"
+      fi
+    done
+
+    # Commands to attach to default project session
+    local attach_session="tmux attach -t ${session} &> /dev/null"
+    if [[ -n "${instance_suffix}" ]]; then
+      # Instance given so session group used. If fail to attach to a session
+      # group then create a new session group based on project session.
+      #
+      # NOTE: To handle case where the project session may not have been created
+      # yet (e.g. 'projux attach foo 2' was used before 'projux attach foo')
+      # we will always try to create a new project session  before attempting to
+      # create a session group. If the project session already exists we just
+      # throw out the error and move on to session group creation.
+      local attach_session="${attach_session} || \
+          { { ${new_session}; }; \
+          TMUX= tmux new -t ${project_name} -s ${session} &> /dev/null; }"
+    fi
+
+    # Commands to attach/switch to new session
+    local attach_new_session="tmux attach -t ${project_name} &> /dev/null"
+
+    # Attach to session or create a new session
+    local cmd="__projux_notify false && { ${attach_session} || \
+        { __projux_notify true && ${new_session} && ${attach_new_session}; }; }"
+  fi
+
+  if __projux_is_project_local; then
+    eval "$cmd"
+  else
+    ssh -Y -t ${PROJECT_HOST-${DEFAULT_PROJECT_HOST}} "${cmd}"
+  fi
+}
+
+################################################################################
+# Recieves notifications when tmux new, switch, or attach is called or a new
+# ssh connection is made.
+#
+# Args:
+#   $1: True if a new tmux session, else false
+################################################################################
+function __projux_notify() {
+  if [[ -n "${PROJUX_NOTIFY_FN}" ]]; then
+    eval "${PROJUX_NOTIFY_FN} $*"
+  fi
+}
+
+################################################################################
+# Returns $? == 0 if project is on local machine.
+#
+# REQUIREMENTS: project env vars are properly set (via 'projux attach <name>')
+################################################################################
+function __projux_is_project_local() {
+  if [[ "${PROJECT_HOST-${DEFAULT_PROJECT_HOST}}" == $(hostname)* || \
+      "${PROJECT_HOST-${DEFAULT_PROJECT_HOST}}" == "${HOSTNAME}"* || \
+      "${PROJECT_HOST-${DEFAULT_PROJECT_HOST}}" == "localhost" ]]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+################################################################################
+# Selects/creates tmux window in current project (must be attached via 'projux
+# attach').
+#
+# Args:
+#   $* [<win>|:default|:delete [<win>]|:new <win>]
+################################################################################
+function __projux_win() {
+  if [[ "${1}" == ":default" ]]; then
+    local session=$(tmux display-message -p "#S" 2> /dev/null)
+    local win_num=${session##*_}
+    if [[ "${win_num}" == "${session}" ]]; then
+      local win_num=1
+    fi
+    # no tmux sessions, exit
+    if [[ -z "${win_num}" ]]; then
+      return 1
+    fi
+    echo $(tmux list-windows | grep ${win_num}":" | awk '{print $2}')
+  elif [[ "${1}" == ":delete" ]]; then
+    if [[ -z "${2}" ]]; then
+      tmux kill-window
+    else
+      tmux kill-window -t ${*:2}
+    fi
+  elif [[ "${1}" == ":new" ]]; then
+    tmux new-window -d -n ${*:2} 'bash; stty -ixon'
+  elif [[ -n "${1}" ]]; then
+    tmux select-window -t $*
+  else
+    tmux list-windows | awk '{print $2}'
+  fi
+}
+
+################################################################################
+# Selects/creates tmux pane in current project (must be attached via 'projux
+# attach').
+#
+# Args:
+#   $* [<pane>|:delete [<pane>]|:split|:vsplit]
+################################################################################
+function __projux_pane() {
+  if [[ "${1}" == ":delete" ]]; then
+    if [[ -z "${2}" ]]; then
+      tmux kill-pane
+    else
+      tmux kill-pane -t ${*:2}
+    fi
+  elif [[ "${1}" == ":new" || "${1}" == ":split" ]]; then
+    tmux split-window -d
+  elif [[ "${1}" == ":vsplit" ]]; then
+    tmux split-window -d -h
+  elif [[ -n "${1}" ]]; then
+    tmux select-pane -t $*
+  else
+    tmux list-panes | \
+        awk '{print substr($1,0,1) " (global: " $7 ")"}'
+  fi
+}
+
+################################################################################
+# Returns default project tmux window name (internal use).
+#
+# If a project:win pair is passed then it is returned as is otherwise the
+# default project window is looked up and returned along with the project as
+# project:win. The default window is the first entry in the
+# $DEFAULT_PROJECT_WINDOWS list.
+#
+# Args:
+#   $1: Project name (e.g. tmux session) or project:win pair.
+################################################################################
+function __projux_default_project_win() {
+  local project_name="${1%%:*}"
+  local project_win="${1#:*}"
+  # If no ':' then project_win will be same as project_name
+  if [[ "${project_win}" != "${project_name}" ]]; then
+    echo "${1}"
+  else
+    local project_wins=$(\
+        __projux_project_var "${project_name}" "PROJECT_WINDOWS")
+    if [[ -z "${project_wins}" ]]; then
+      project_wins="${DEFAULT_PROJECT_WINDOWS}"
+    fi
+    project_wins=$(echo ${project_wins}) # strip spaces
+    # %%::* reads everything up to first :: (e.g. first window entry)
+    project_win="${project_wins%%::*}"
+    echo "${project_name}:${project_win}"
+  fi
+}
+
+
+################################################################################
+# * Project File and Directory Management *
+################################################################################
+
+################################################################################
+# Runs cd command.
+#
+# Args:
+#   $1: {:bin|:gen [#]|:project|:src [#]|:test [#]}
+#   $2 (optional): number (can be used with :gen, :src, or :test)
+################################################################################
+function __projux_cd() {
+  if [[ "${1}" == ":b" || "${1}" == ":bin" ]]; then
+    cd "${PROJECT_BIN_DIR}"
+  elif [[ "${1}" == ":g" || "${1}" == ":gen" ]]; then
+    local idx=0
+    if [[ -n "${2}" ]]; then
+      idx=(${2}-1)
+    fi
+
+    cd "${PROJECT_GEN_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[$idx]})"
+  elif [[ "${1}" == ":p" || "${1}" == ":project" ]]; then
+    cd "${PROJECT_DIR}"
+  elif [[ "${1}" == ":s" || "${1}" == ":src" ]]; then
+    local idx=0
+    if [[ -n "${2}" ]]; then
+      idx=(${2}-1)
+    fi
+
+    cd ${PROJECT_SRC_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[${idx}]})
+  elif [[ "${1}" == ":t" || "${1}" == ":test" ]]; then
+    local idx=0
+    if [[ -n "${2}" ]]; then
+      idx=(${2}-1)
+    fi
+
+    cd "${PROJECT_TEST_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[$idx]})"
+  fi
+}
+
+################################################################################
+# Runs pushd command.
+#
+# Args:
+#   $1: {:bin|:gen [#]|:project|:src [#]|:test [#]}
+#   $2 (optional): number (can be used with :gen, :src, or :test)
+################################################################################
+function __projux_pushd() {
+  if [[ "${1}" == ":b" || "${1}" == ":bin" ]]; then
+    pushd "${PROJECT_BIN_DIR}"
+  elif [[ "${1}" == ":g" || "${1}" == ":gen" ]]; then
+    local idx=0
+    if [[ -n "${2}" ]]; then
+      idx=(${2}-1)
+    fi
+
+    pushd "${PROJECT_GEN_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[$idx]})"
+  elif [[ "${1}" == ":p" || "${1}" == ":project" ]]; then
+    cd "${PROJECT_DIR}"
+  elif [[ "${1}" == ":s" || "${1}" == ":src" ]]; then
+    local idx=0
+    if [[ -n "${2}" ]]; then
+      idx=(${2}-1)
+    fi
+
+    pushd "${PROJECT_SRC_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[$idx]})"
+  elif [[ "${1}" == ":t" || "${1}" == ":test" ]]; then
+    local idx=0
+    if [[ -n "${2}" ]]; then
+      idx=(${2}-1)
+    fi
+
+    pushd "${PROJECT_TEST_DIR}/$(arr=(${PROJECT_PKGS}); echo ${arr[$idx]})"
+  fi
+}
+
+
+################################################################################
+# * File Type Specific Tools *
+################################################################################
+
+################################################################################
+# Runs format.
+#
+# REQUIREMENTS: project env vars are properly set (via 'projux attach <name>')
+#
+# By default, this function relies on the existance of a PROJECT_FORMAT_CMDS
+# (or DEFAULT_PROJECT_FORMAT_CMDS) environment varible that specifies which
+# format commands to run on different file types. If the default implementation
+# is not enough, then a custom function implementation can be provided using
+# PROJECT_FORMAT_FN.
+#
+# This function supports the ability to pass either stdin to be formatted or a
+# list of files. Only files matching the PROJECT_INCLUDE_FILTER and
+# PROJECT_EXCLUDE_FILTER settings will be considered for formatting. When stdin
+# is used, the environment varible FILE_TYPE must be set to provide a hint about
+# which format function to use. The keyword ':project' can be used to specify
+# the PROJECT_SRC_DIR and PROJECT_TEST_DIR directories as targets.
+#
+# Examples:
+#   projux format                         # format recursively from current dir
+#   projux format ...                     # as above
+#   projux format foo.cc                  # format specific file
+#   projux format :project                # format project src/test targets
+#   cat foo | FILE_TYPE=cc projux format  # format stdin
+#   projux format -p xxx ...              # format recursively in project xxx
+#   VERBOSE=0 projux format               # enable verbose output
+#   DRY_RUN=true projux format            # print commands, but don't run
+#
+# Args:
+#   $*: Targets.
+################################################################################
+function __projux_format() {
+  local project_name="${PROJECT_NAME}"
+  if [[ "${1}" == "-p" ]]; then
+    shift
+    project_name="${1}"
+    shift
+  fi
+
+  if [[ "${project_name%%:*}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
+    __projux_tmux_send \
+        "$(__default_project_win ${project_name})" "__projux_format" $*
     return $?
   fi
 
-  custom_fn=${PROJECT_FORMAT_FN-${DEFAULT_PROJECT_FORMAT_FN}}
+  local custom_fn=${PROJECT_FORMAT_FN-${DEFAULT_PROJECT_FORMAT_FN}}
   if [[ -n "${custom_fn}" ]]; then
     local cmd="${custom_fn} $@"
     eval "$cmd"
   else
     if [[ $# -eq 0 ]]; then
-      local targets="..."
+      local args="..."
     elif [[ "${1}" == ":project" ]]; then
       # Use src/test directories as targets
-      local targets=$(__projux_expand_pkgs 3)
+      local args=$(__projux_expand_pkgs 3)
     else
-      local targets="$@"
+      local args="$@"
     fi
 
     if [[ -z "${OUT_DIR}" ]]; then
@@ -86,7 +1699,7 @@ function format() {
     fi
     local exec_cmds=${PROJECT_FORMAT_CMDS-${DEFAULT_PROJECT_FORMAT_CMDS}}
     HEADING="FORMATTING" OUT_DIR=${out_dir} EXEC_CMDS="${exec_cmds}" \
-        __projux_exec ${targets}
+        __projux_exec ${args}
   fi
   return $?
 }
@@ -94,7 +1707,7 @@ function format() {
 ################################################################################
 # Runs lint.
 #
-# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+# REQUIREMENTS: project env vars are properly set (via 'projux attach <name>')
 #
 # By default, this function relies on the existance of a PROJECT_LINT_CMDS
 # (or DEFAULT_PROJECT_LINT_CMDS) environment varible that specifies which
@@ -103,30 +1716,30 @@ function format() {
 # PROJECT_LINT_FN.
 #
 # This function supports the ability to pass either stdin to be linted or a
-# list of files. When no args are passed all files within the PROJECT_SRC_DIR
-# and PROJECT_TEST_DIR that match the PROJECT_INCLUDE_FILTER and
-# PROJECT_EXLUCDE_FILTER settings are used.
+# list of files. Only files matching the PROJECT_INCLUDE_FILTER and
+# PROJECT_EXCLUDE_FILTER settings will be considered for linting. When stdin
+# is used, the environment varible FILE_TYPE must be set to provide a hint about
+# which lint function to use. The keyword ':project' can be used to specify the
+# PROJECT_SRC_DIR and PROJECT_TEST_DIR directories as targets.
 #
 # The environment variable OUT_DIR can be set to the dir to use to store
 # the last_run output. By default ${PROJECT_TARGET_DIR}/lint is used.
 #
-# When stdin is used, the environment varible FILE_TYPE must be set to
-# provide a hint about which lint function to use.
-#
 # Examples:
-#   cat foo | FILE_TYPE=cc lint    # lint stdin
-#   lint foo.cc                    # lint specific file
-#   lint                           # recursively lint current dir
-#   lint ...                       # as above
-#   lint :project                  # lint project src/test targets
-#   lint -p xxx ...                # lint recursively in project xxx
-#   VERBOSE=0 lint
-#   DRY_RUN=true lint
+#   projux lint                           # recursively lint current dir
+#   projux lint ...                       # as above
+#   projux lint foo.cc                    # lint specific file
+#   projux lint :project                  # lint project src/test targets
+#   cat foo | FILE_TYPE=cc projux lint    # lint stdin
+#   projux lint -p xxx ...                # lint recursively in project xxx
+#   OUT=/tmp/lint/out lint                # redirect output to /tmp/lint/out
+#   VERBOSE=0 lint                        # enable verbose output
+#   DRY_RUN=true lint                     # print commands, but don't run
 #
 # Args:
 #   $*: Targets.
 ################################################################################
-function lint() {
+function __projux_lint() {
   local project_name="${PROJECT_NAME}"
   if [[ "${1}" == "-p" ]]; then
     shift
@@ -135,7 +1748,8 @@ function lint() {
   fi
 
   if [[ "${project_name%%:*}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
-    __projux_tmux_send "$(__default_project_win ${project_name})" "lint" $*
+    __projux_tmux_send "$(__default_project_win ${project_name})" \
+        "__projux_lint" $*
     return $?
   fi
 
@@ -145,12 +1759,12 @@ function lint() {
     eval "$cmd"
   else
     if [[ $# -eq 0 ]]; then
-      local targets="..."
+      local args="..."
     elif [[ "${1}" == ":project" ]]; then
       # Use src/test directories as targets
-      local targets=$(__projux_expand_pkgs 3)
+      local args=$(__projux_expand_pkgs 3)
     else
-      local targets="$@"
+      local args="$@"
     fi
 
     if [[ -z "${OUT_DIR}" ]]; then
@@ -161,7 +1775,7 @@ function lint() {
     fi
     local exec_cmds=${PROJECT_LINT_CMDS-${DEFAULT_PROJECT_LINT_CMDS}}
     HEADING="LINTING" OUT_DIR="${out_dir}" EXEC_CMDS="${exec_cmds}" \
-        __projux_exec ${targets}
+        __projux_exec ${args}
   fi
   return $?
 }
@@ -169,7 +1783,7 @@ function lint() {
 ################################################################################
 # Runs build.
 #
-# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+# REQUIREMENTS: project env vars are properly set (via 'projux attach <name>')
 #
 # By default, this function relies on the existance of a PROJECT_BUILD_CMDS
 # (or DEFAULT_PROJECT_BUILD_CMDS) environment varible that specifies which
@@ -178,30 +1792,30 @@ function lint() {
 # PROJECT_BUILD_FN.
 #
 # This function supports the ability to pass either stdin to be built or a
-# list of files. When no args are passed all files within the PROJECT_SRC_DIR
-# and PROJECT_TEST_DIR that match the PROJECT_INCLUDE_FILTER and
-# PROJECT_EXCLUDE_FILTER settings are used.
+# list of files. Only files matching the PROJECT_INCLUDE_FILTER and
+# PROJECT_EXCLUDE_FILTER settings will be considered for building. When stdin
+# is used, the environment varible FILE_TYPE must be set to provide a hint about
+# which build function to use. The keyword ':project' can be used to specify the
+# PROJECT_SRC_DIR and PROJECT_TEST_DIR directories as targets.
 #
 # The environment variable OUT_DIR can be set to the dir to use to store
 # the last_run output. By default ${PROJECT_TARGET_DIR}/build is used.
 #
-# When stdin is used, the environment varible FILE_TYPE must be set to
-# provide a hint about which build function to use.
-#
 # Examples:
-#   cat foo | FILE_TYPE=scala build    # build stdin
-#   build foo.scala                    # build specific file
-#   build ...                          # build recursively from current dir
-#   build                              # as above
-#   build :project                     # build project src/test targets
-#   build -p xxx ...                   # build recursively in project xxx
-#   VERBOSE=0 build
-#   DRY_RUN=true build
+#   projux build ...                        # build recursively from current dir
+#   projux build                            # as above
+#   projux build foo.scala                  # build specific file
+#   projux build :project                   # build project src/test targets
+#   cat foo | FILE_TYPE=scala projux build  # build stdin
+#   projux build -p xxx ...                 # build recursively in project xxx
+#   OUT=/tmp/build/out projux build         # redirect output to /tmp/build/out
+#   VERBOSE=0 projux build                  # enable verbose output
+#   DRY_RUN=true projux build               # print commands, but don't run
 #
 # Args:
 #   $*: Targets.
 ################################################################################
-function build() {
+function __projux_build() {
   local project_name="${PROJECT_NAME}"
   if [[ "${1}" == "-p" ]]; then
     shift
@@ -210,7 +1824,8 @@ function build() {
   fi
 
   if [[ "${project_name%%:*}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
-    __projux_tmux_send "$(__default_project_win ${project_name})" "build" $*
+    __projux_tmux_send "$(__default_project_win ${project_name})" \
+        "__projux_build" $*
     return $?
   fi
 
@@ -220,12 +1835,12 @@ function build() {
     eval "$cmd"
   else
     if [[ $# -eq 0 ]]; then
-      local targets="..."
+      local args="..."
     elif [[ "${1}" == ":project" ]]; then
       # Use src/test directories as targets
-      local targets=$(__projux_expand_pkgs 3)
+      local args=$(__projux_expand_pkgs 3)
     else
-      local targets="$@"
+      local args="$@"
     fi
 
     if [[ -z "${OUT_DIR}" ]]; then
@@ -236,7 +1851,7 @@ function build() {
     fi
     local exec_cmds=${PROJECT_BUILD_CMDS-${DEFAULT_PROJECT_BUILD_CMDS}}
     HEADING="BUILDING" OUT_DIR="${out_dir}" EXEC_CMDS="${exec_cmds}" \
-        __projux_exec ${targets}
+        __projux_exec ${args}
   fi
   return $?
 }
@@ -244,7 +1859,7 @@ function build() {
 ################################################################################
 # Runs test.
 #
-# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+# REQUIREMENTS: project env vars are properly set (via 'projux attach <name>')
 #
 # By default, this function relies on the existance of a PROJECT_TEST_CMDS
 # (or DEFAULT_PROJECT_TEST_CMDS) environment varible that specifies which
@@ -264,19 +1879,20 @@ function build() {
 # the last_run output. By default ${PROJECT_TARGET_DIR}/test is used.
 #
 # Examples:
-#   test foo_class_test            # test foo_class_test
-#   test foo_class_test.cc         # test foo_class_test (auto removes .cc)
-#   test                           # all test targets recursivey from cur dir
-#   test ...                       # as above
-#   test :project                  # test matching targets in project test dir
-#   test -p xxx foo_class_test     # test foo_class_test in project xxx
-#   VERBOSE=0 test foo_class_test
-#   DRY_RUN=true test foo_class_test
+#   projux test foo_class_test        # test foo_class_test
+#   projux test foo_class_test.cc     # test foo_class_test (auto removes .cc)
+#   projux test                       # all test targets recursively
+#   projux test ...                   # as above
+#   projux test :project              # test matching targets in project test dir
+#   projux test -p xxx foo_test       # test foo_test in project xxx
+#   OUT=/tmp/test/out projux test     # redirect output to /tmp/test/out
+#   VERBOSE=0 projux test foo_test    # enable verbose output
+#   DRY_RUN=true projux test foo_test # print commands, but don't run
 #
 # Args:
 #   $*: Targets.
 ################################################################################
-function test() {
+function __projux_test() {
   local project_name="${PROJECT_NAME}"
   if [[ "${1}" == "-p" ]]; then
     shift
@@ -285,7 +1901,8 @@ function test() {
   fi
 
   if [[ "${project_name%%:*}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
-    __projux_tmux_send "$(__default_project_win ${project_name})" "test" $*
+    __projux_tmux_send "$(__default_project_win ${project_name})" \
+        "__projux_test" $*
     return $?
   fi
 
@@ -295,12 +1912,12 @@ function test() {
     eval "$cmd"
   else
     if [[ $# -eq 0 ]]; then
-      local targets="..."
+      local args="..."
     elif [[ "${1}" == ":project" ]]; then
       # Use test directories as targets
-      local targets=$(__projux_expand_pkgs 2)
+      local args=$(__projux_expand_pkgs 2)
     else
-      local targets="$@"
+      local args="$@"
     fi
 
     if [[ -z "${OUT_DIR}" ]]; then
@@ -317,11 +1934,11 @@ function test() {
       HEADING="TESTING" OUT_DIR="${out_dir}" \
           PROJECT_INCLUDE_FILTER=${PROJECT_TEST_TARGETS} \
           SUFFIXES_FILTER=${suffixes_filter} REMOVE_EXTENSIONS=1 \
-          EXEC_CMDS="${exec_cmds}" __projux_exec ${targets}
+          EXEC_CMDS="${exec_cmds}" __projux_exec ${args}
     else
       HEADING="TESTING" OUT_DIR="${out_dir}" EXEC_CMDS="${exec_cmds}" \
           SUFFIXES_FILTER=${suffixes_filter} REMOVE_EXTENSIONS=1 \
-          __projux_exec ${targets}
+          __projux_exec ${args}
     fi
   fi
   return $?
@@ -330,7 +1947,7 @@ function test() {
 ################################################################################
 # Runs coverage.
 #
-# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+# REQUIREMENTS: project env vars are properly set (via 'projux attach <name>')
 #
 # By default, this function relies on the existance of a PROJECT_TEST_CMDS
 # (or DEFAULT_PROJECT_TEST_CMDS) environment varible that specifies which
@@ -350,18 +1967,19 @@ function test() {
 # the last_run output. By default ${PROJECT_TARGET_DIR}/coverage is used.
 #
 # Examples:
-#   coverage foo_class_test        # coverage of foo_class_test
-#   coverage                       # coverage of all targets recursively
-#   coverage ...                   # as above
-#   coverage :project              # coverage of targets in project test dir
-#   coverage -p xxx foo_class_test # coverage of foo_class_test in project xxx
-#   VERBOSE=0 coverage
-#   DRY_RUN=true coverage
+#   projux coverage foo_class_test        # coverage of foo_class_test
+#   projux coverage                       # coverage of all test targets
+#   projux coverage ...                   # as above
+#   projux coverage :project              # coverage of targets in test dir
+#   projux coverage -p xxx foo_test       # coverage foo_test in project xxx
+#   OUT=/tmp/cov/out projux coverage      # redirect output to /tmp/cov/out
+#   VERBOSE=0 projux coverage foo_test    # enable verbose output
+#   DRY_RUN=true projux coverage foo_test # print commands, but don't run
 #
 # Args:
 #   $*: Targets.
 ################################################################################
-function coverage() {
+function __projux_coverage() {
   local project_name="${PROJECT_NAME}"
   if [[ "${1}" == "-p" ]]; then
     shift
@@ -370,7 +1988,8 @@ function coverage() {
   fi
 
   if [[ "${project_name%%:*}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
-    __projux_tmux_send "$(__default_project_win ${project_name})" "coverage" $*
+    __projux_tmux_send "$(__default_project_win ${project_name})" \
+        "__projux_coverage" $*
     return $?
   fi
 
@@ -380,12 +1999,12 @@ function coverage() {
     eval "$cmd"
   else
     if [[ $# -eq 0 ]]; then
-      local targets="..."
+      local args="..."
     elif [[ "${1}" == ":project" ]]; then
       # Use test directories as targets
-      local targets=$(__projux_expand_pkgs 2)
+      local args=$(__projux_expand_pkgs 2)
     else
-      local targets="$@"
+      local args="$@"
     fi
 
     if [[ -z "${OUT_DIR}" ]]; then
@@ -402,11 +2021,11 @@ function coverage() {
       HEADING="COVERAGE" OUT_DIR="${out_dir}" \
          PROJECT_INCLUDE_FILTER=${PROJECT_TEST_TARGETS} \
          SUFFIXES_FILTER=${suffixes_filter} REMOVE_EXTENSIONS=1 \
-         EXEC_CMDS="${exec_cmds}" __projux_exec ${targets}
+         EXEC_CMDS="${exec_cmds}" __projux_exec ${args}
     else
       HEADING="COVERAGE" OUT_DIR="${out_dir}" \
          SUFFIXES_FILTER=${suffixes_filter} REMOVE_EXTENSIONS=1 \
-         EXEC_CMDS="${exec_cmds}" __projux_exec ${targets}
+         EXEC_CMDS="${exec_cmds}" __projux_exec ${args}
     fi
   fi
   return $?
@@ -414,32 +2033,32 @@ function coverage() {
 
 
 ################################################################################
-# Selectable Commands
+# * Flag Based Tools *
 ################################################################################
 
 ################################################################################
 # Runs program.
 #
-# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+# REQUIREMENTS: project env vars are properly set (via 'projux attach <name>')
 #
 # This function relies on the existance of a PROJECT_RUN_CMDS variable (or
 # DEFAULT_PROJECT_RUN_CMDS).
 #
 # Examples:
-#   run                        # run first entry in ${PROJECT_RUN_CMDS}
-#   run prog                   # run 'prog' entry in ${PROJECT_RUN_CMDS}
-#   run prog --foo=+bar,+baz   # add 'bar' and 'baz' to --foo flag before run
-#   run prog --foo=-bar        # remove 'bar' from --foo flag before run
-#   run prog --foo=bar         # replace default --foo flag value with bar
-#   run -shared prog
-#   VERBOSE=0 run prog
-#   DRY_RUN=true run prog
+#   projux run                       # run first entry in ${PROJECT_RUN_CMDS}
+#   projux run prog                  # run 'prog' entry in ${PROJECT_RUN_CMDS}
+#   projux run prog -foo=+bar,+baz   # add 'bar' and 'baz' to -foo flag
+#   projux run prog -foo=-bar        # remove 'bar' from -foo flag before run
+#   projux run prog -foo=bar         # replace default -foo flag value with bar
+#   projux run -shared prog
+#   VERBOSE=0 projux run prog
+#   DRY_RUN=true projux run prog
 #
 # Args:
 #   target (optional): Target (prog)
 #   flags (optional): -shared (run prog in ~/Public/)
 ################################################################################
-function run() {
+function __projux_run() {
   local project_name="${PROJECT_NAME}"
   if [[ "${1}" == "-p" ]]; then
     shift
@@ -449,7 +2068,7 @@ function run() {
 
   if [[ "${project_name%%:*}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
     __projux_tmux_send \
-        "$(__projux_default_project_win ${project_name})" "run" $*
+        "$(__projux_default_project_win ${project_name})" "__projux_run" $*
     return $?
   fi
 
@@ -460,6 +2079,10 @@ function run() {
   fi
 
   local run_cmd=$(__projux_get_run_cmd ${project_name%%:*} $*)
+  if [[ -z "${run_cmd}" ]]; then
+    echo "$(tput setaf 1)ERROR: unknown command '$1'$(tput sgr0)"
+    return 1
+  fi
 
   local cmd="${PROJECT_BIN_DIR}/${run_cmd}"
   if $shared; then
@@ -469,7 +2092,7 @@ function run() {
   fi
 
   if [[ -z "${VERBOSE}" || ${VERBOSE} -ne 0 ]]; then
-    __projux_print_cmd "RUNNING" "${cmd}"
+    __projux_print_cmd "RUNNING" ${cmd}
   fi
 
   if [[ ${DRY_RUN-false} -eq 0 ]]; then
@@ -480,18 +2103,18 @@ function run() {
 ################################################################################
 # Cleans code base.
 #
-# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+# REQUIREMENTS: project env vars are properly set (via 'projux attach <name>')
 #
 # This function relies on the existance of a PROJECT_CLEAN_CMDS variable (or
 # DEFAULT_PROJECT_CLEAN_CMDS).
 #
 # Examples:
-#   clean
-#   clean -p xxx                   # cleans project xxx
-#   VERBOSE=0 clean
-#   DRY_RUN=true clean
+#   projux clean
+#   projux clean -p xxx            # cleans project xxx
+#   VERBOSE=0 projux clean
+#   DRY_RUN=true projux clean
 ################################################################################
-function clean() {
+function __projux_clean() {
   local project_name="${PROJECT_NAME}"
   if [[ "${1}" == "-p" ]]; then
     shift
@@ -500,7 +2123,8 @@ function clean() {
   fi
 
   if [[ "${project_name%%:*}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
-    __projux_tmux_send "$(__default_project_win ${project_name})" "clean" $*
+    __projux_tmux_send "$(__default_project_win ${project_name})" \
+        "__projux_clean" $*
     return $?
   fi
 
@@ -518,7 +2142,7 @@ function clean() {
   fi
 
   if [[ -z "${VERBOSE}" || ${VERBOSE} -ne 0 ]]; then
-    __projux_print_cmd "CLEANING" "${cmd}"
+    __projux_print_cmd "CLEANING" ${cmd}
   fi
 
   if ! ${DRY_RUN-false}; then
@@ -530,98 +2154,98 @@ function clean() {
 ################################################################################
 # Runs package command for project.
 #
-# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+# REQUIREMENTS: project env vars are properly set (via 'projux attach <name>')
 #
 # This function relies on the existance of a PROJECT_PACKAGE_CMDS variable (or
 # DEFAULT_PROJECT_PACKAGE_CMDS).
 #
 # Examples:
-#   package
-#   package -p xxx                 # package project xxx
-#   VERBOSE=0 package
-#   DRY_RUN=true package
+#   projux package
+#   projux package -p xxx          # package project xxx
+#   VERBOSE=0 projux package
+#   DRY_RUN=true projux package
 ################################################################################
-function package() {
+function __projux_package() {
   __projux_select_cmd "PROJECT_PACKAGE_CMDS" "PACKAGING" $*
 }
 
 ################################################################################
 # Runs deploy command for project.
 #
-# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+# REQUIREMENTS: project env vars are properly set (via 'projux attach <name>')
 #
 # This function relies on the existance of a PROJECT_DEPLOY_CMDS variable (or
 # DEFAULT_PROJECT_DEPLOY_CMDS).
 #
 # Examples:
-#   deploy
-#   deploy -p xxx                  # deploy project xxx
-#   VERBOSE=0 deploy
-#   DRY_RUN=true deploy
+#   projux deploy
+#   projux deploy -p xxx           # deploy project xxx
+#   VERBOSE=0 projux deploy
+#   DRY_RUN=true projux deploy
 ################################################################################
-function deploy() {
+function __projux_deploy() {
   __projux_select_cmd "PROJECT_DEPLOY_CMDS" "DEPLOYING" $*
 }
 
 ################################################################################
 # Runs gendocs command for project.
 #
-# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+# REQUIREMENTS: project env vars are properly set (via 'projux attach <name>')
 #
 # This function relies on the existance of a PROJECT_GENDOCS_CMDS variable (or
 # DEFAULT_PROJECT_GENDOCS_CMDS).
 #
 # Examples:
-#   gendocs
-#   gendocs -p xxx                 # gendocs project xxx
+#   projux gendocs
+#   projux gendocs -p xxx          # gendocs project xxx
 #   VERBOSE=0 gendocs
 #   DRY_RUN=true gendocs
 ################################################################################
-function gendocs() {
+function __projux_gendocs() {
   __projux_select_cmd "PROJECT_GENDOCS_CMDS" "GENERATING DOCS" $*
 }
 
 ################################################################################
 # Searches code base.
 #
-# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+# REQUIREMENTS: project env vars are properly set (via 'projux attach <name>')
 #
 # This function relies on the existance of a PROJECT_SEARCH_CMDS variable (or
 # DEFAULT_PROJECT_SEARCH_CMDS).
 #
 # Examples:
-#   search foo
-#   search -p xxx foo         # searches foo in project xxx
-#   VERBOSE=0 search foo
-#   DRY_RUN=true search foo
+#   projux search foo
+#   projux search -p xxx foo       # searches foo in project xxx
+#   VERBOSE=0 projux search foo
+#   DRY_RUN=true projux search foo
 #
 # Args:
 #   keywords: List of keywords to search for
 ################################################################################
-function search() {
+function __projux_search() {
   __projux_select_cmd "PROJECT_SEARCH_CMDS" "SEARCHING" $*
 }
 
 
 ################################################################################
-# Misc Commands
+# * Misc Tools Commands *
 ################################################################################
 
 ################################################################################
 # Runs sanity checks (lint, test, etc) - usually used before submitting code.
 #
-# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+# REQUIREMENTS: project env vars are properly set (via 'projux attach <name>')
 #
 # Examples:
-#   santity
-#   VERBOSE=0 sanity     # verbose
-#   DRY_RUN=true sanity  # dry-run
+#   projux sanity
+#   VERBOSE=0 projux sanity     # verbose
+#   DRY_RUN=true projux sanity  # dry-run
 #
 # This function relies on the existance of a function pointed to by the
 # PROJECT_SANITY_FN environment variable (set in ~/.projects) or
 # DEFAULT_PROJECT_SANITY_FN (set in ~/.bashrc).
 ################################################################################
-function sanity() {
+function __projux_sanity() {
   local project_name="${PROJECT_NAME}"
   if [[ "${1}" == "-p" ]]; then
     shift
@@ -631,7 +2255,7 @@ function sanity() {
 
   if [[ "${project_name%%:*}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
     __projux_tmux_send \
-        "$(__projux_default_project_win ${project_name})" "sanity" $*
+        "$(__projux_default_project_win ${project_name})" "__projux_sanity" $*
     return $?
   fi
 
@@ -644,51 +2268,51 @@ function sanity() {
       return 0
     fi
 
-    format ":project"
+    __projux_format ":project"
     if [[ $? -ne 0 ]]; then
       echo "$(tput setaf 1)FORMAT failed$(tput sgr0)"
       return 1
     fi
 
-    lint ":project"
+    __projux_lint ":project"
     if [[ $? -ne 0 ]]; then
       echo "$(tput setaf 1)LINT failed$(tput sgr0)"
-      geterrors ":lint"
+      __projux_errors ":lint"
       return 1
     fi
 
-    build ":project"
+    __projux_build ":project"
     if [[ $? -ne 0 ]]; then
       echo "$(tput setaf 1)BUILD failed$(tput sgr0)"
-      geterrors ":build"
+      __projux_errors ":build"
       return 1
     fi
 
-    test ":project"
+    __projux_test ":project"
     if [[ $? -ne 0 ]]; then
       echo "$(tput setaf 1)TEST failed$(tput sgr0)"
-      geterrors ":test"
+      __projux_errors ":test"
       return 1
     fi
 
-    coverage ":project"
+    __projux_coverage ":project"
     if [[ $? -ne 0 ]]; then
       echo "$(tput setaf 1)COVERAGE failed$(tput sgr0)"
-      geterrors ":coverage"
+      __projux_errors ":coverage"
       return 1
     fi
 
     # Print URLs
     echo ""
-    local build=$(geturl ":build")
+    local build=$(__projux_url ":build")
     if [[ -n "${build}" ]]; then
       echo "BUILD  : ${build}"
     fi
-    local test=$(geturl ":test")
+    local test=$(__projux_url ":test")
     if [[ -n "${test}" ]]; then
       echo "TEST     : ${test}"
     fi
-    local coverage=$(geturl ":coverage")
+    local coverage=$(__projux_url ":coverage")
     if [[ -n "${coverage}" ]]; then
       echo "COVERAGE : ${coverage}"
     fi
@@ -699,18 +2323,18 @@ function sanity() {
 ################################################################################
 # Copies named prog file to $PROJECT_SHARE_DIR (on current host) for sharing.
 #
-# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+# REQUIREMENTS: project env vars are properly set (via 'projux attach <name>')
 #
 # Example:
-#   share prog
-#   share -p xxx prog  # share program for project xxx
-#   VERBOSE=1 share prog
-#   DRY_RUN=true share prog
+#   projux share prog
+#   projux share -p xxx prog  # share program for project xxx
+#   VERBOSE=1 projux share prog
+#   DRY_RUN=true projux share prog
 #
 # Args:
 #   target: Target file to share.
 ################################################################################
-function share() {
+function __projux_share() {
   local project_name="${PROJECT_NAME}"
   if [[ "${1}" == "-p" ]]; then
     shift
@@ -720,7 +2344,7 @@ function share() {
 
   if [[ "${project_name%%:*}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
     __projux_tmux_send \
-        "$(__projux_default_project_win ${project_name})" "share" $*
+        "$(__projux_default_project_win ${project_name})" "__projux_share" $*
     return $?
   fi
 
@@ -735,7 +2359,7 @@ function share() {
   local cmd="cp -f ${bin_dir}/${prog} ${dst}/${prog}"
 
   if [[ -z "${VERBOSE}" || ${VERBOSE} -ne 0 ]]; then
-    __projux_print_cmd "SHARING" "${cmd}"
+    __projux_print_cmd "SHARING" ${cmd}
   fi
 
   if [[ ${DRY_RUN-false} -eq 0 ]]; then
@@ -744,9 +2368,107 @@ function share() {
 }
 
 ################################################################################
+# Backs up project files.
+#
+# Files are backed up to $PROJECT_BACKUP_DIR/<timestamp>
+#
+# Args:
+#   $1: Project name
+################################################################################
+function __projux_backup() {
+  local project_name="${PROJECT_NAME}"
+  if [[ "${1}" == "-p" ]]; then
+    shift
+    project_name="${1}"
+    shift
+  fi
+
+  local project_host=$(__projux_project_var "${project_name}" "PROJECT_HOST")
+  if [[ -z "${project_host}" ]]; then
+    project_host="${DEFAULT_PROJECT_HOST}"
+  fi
+
+  local backup_dir=$(\
+      __projux_project_var "${project_name}" "PROJECT_BACKUP_DIR")
+  if [[ -z "${backup_dir}" ]]; then
+    backup_dir="${DEFAULT_PROJECT_BACKUP_DIR}/${project_name}"
+  fi
+
+  # This assumes the git repo is rooted at the PROJECT_DIR
+  local project_dir=$(\
+      __projux_project_var "${project_name}" "PROJECT_DIR")
+  if [[ -z "${project_dir}" ]]; then
+    echo "$(tput setaf 1)PROJECT_DIR must be configured$(tput sgr0)"
+    return 1
+  fi
+
+  local pushd_cmd="pushd ${project_dir} &> /dev/null"
+  local git_cmd='$(git ls-files -m -o --directory'
+  git_cmd="$git_cmd --no-empty-directory --exclude-standard 2> /dev/null)"
+  local files_cmd="files=${git_cmd}"
+  local time_cmd='cur_time=$(date +"%FT%T")'
+  local mkdir_cmd="mkdir -p ${backup_dir}/"'${cur_time}'
+  local cp_cmd='for f in ${files}; do'
+  cp_cmd="${cp_cmd} mkdir -p ${backup_dir}/"'${cur_time}/${f%/*}'
+  cp_cmd="${cp_cmd}; "'f=${f%/}'
+  cp_cmd="${cp_cmd}; cp -r ${project_dir}/"'${f} '
+  cp_cmd="${cp_cmd}""${backup_dir}/"'${cur_time}/${f%/*}; done'
+  local cmd="$pushd_cmd && { $files_cmd && $time_cmd && $mkdir_cmd && $cp_cmd;}"
+  local cmd="${cmd}; popd &> /dev/null"
+
+  if __projux_is_project_local; then
+    eval "$cmd"
+  else
+    PROJECT_HOST=${project_host} __projux_ssh_send $cmd 2> /dev/null
+  fi
+}
+
+################################################################################
+# Project based vim server
+#
+# Starts vim as follows:
+#   vim -servername ${PROJECT_NAME} -c ":Open :session $PROJECT_NAME"
+################################################################################
+function __projux_vimserver() {
+  local project_name="${PROJECT_NAME}"
+  if [[ "${1}" == "-p" ]]; then
+    shift
+    project_name="${1}"
+    shift
+  fi
+
+  if [[ $# -gt 0 ]]; then
+    vim -servername ${project_name} $*
+  else
+    vim -servername ${project_name} -c ":Open :session"
+  fi
+}
+
+################################################################################
+# Projux specific sbt
+################################################################################
+function __projux_sbt() {
+  pushd ${PROJUX_SCRIPT_DIR}/psbt &> /dev/null
+  if [[ $? -gt 0 ]]; then
+    local msg="Projux sbt directory ${PROJUX_SCRIPT_DIR} not found"
+    echo "$(tput setaf 1)ERROR: ${msg}$(tput sgr0)"
+    return 1
+  fi
+
+  sbt
+
+  popd &> /dev/null
+}
+
+
+################################################################################
+# * Project Output Commands *
+################################################################################
+
+################################################################################
 # Get errors from last build/lint/test/coverage (where supported).
 #
-# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+# REQUIREMENTS: project env vars are properly set (via 'projux attach <name>')
 #
 # This function relies on the existance of a function pointed to by the
 # PROJECT_GETERRORS_FN environment variable (set in ~/.projects) or
@@ -759,18 +2481,18 @@ function share() {
 # the target.
 #
 # Examples:
-#   geterrors :lint           # Get errors from last call to lint
-#   geterrors :build          # Get errors from last call to build
-#   geterrors :test           # Get errors from last call to test
-#   geterrors :coverage       # Get errors from last call to coverage
-#   geterrors foo.py          # Get current foo.py errors
-#   VERBOSE=0 geterrors :build
-#   DRY_RUN=true geterrors :build
+#   projux errors :lint           # Get errors from last call to lint
+#   projux errors :build          # Get errors from last call to build
+#   projux errors :test           # Get errors from last call to test
+#   projux errors :coverage       # Get errors from last call to coverage
+#   projux errors foo.py          # Get current foo.py errors
+#   VERBOSE=0 projux errors :build
+#   DRY_RUN=true projux errors :build
 #
 # Args:
 #   type: :build, :lint, :test, :coverage, <target>
 ################################################################################
-function geterrors() {
+function __projux_errors() {
   local project_name="${PROJECT_NAME}"
   if [[ "${1}" == "-p" ]]; then
     shift
@@ -780,7 +2502,7 @@ function geterrors() {
 
   if [[ "${project_name%%:*}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
     __projux_tmux_send \
-        "$(__projux_default_project_win ${project_name})" "geterrors" $*
+        "$(__projux_default_project_win ${project_name})" "__projux_errors" $*
     return $?
   fi
 
@@ -789,7 +2511,7 @@ function geterrors() {
     local cmd="${custom_fn} $@"
     eval "$cmd"
   else
-    if [[ -z "${target_dir}" ]]; then
+    if [[ -z "${PROJECT_TARGET_DIR}" ]]; then
       echo "$(tput setaf 1)ERROR: PROJECT_TARGET_DIR not set$(tput sgr0)"
     fi
 
@@ -797,7 +2519,7 @@ function geterrors() {
       ":lint")
         cat "${PROJECT_TARGET_DIR}/lint/last_run"
         ;;
-      ":compile"|":build")
+      ":build")
         cat "${PROJECT_TARGET_DIR}/build/last_run"
         ;;
       ":test")
@@ -807,7 +2529,7 @@ function geterrors() {
         cat "${PROJECT_TARGET_DIR}/coverage/last_run"
         ;;
       *)
-        echo "$(tput setaf 1)ERROR: unknown value ${1}$(tput sgr0)"
+        echo "$(tput setaf 1)ERROR: unknown error type '${1}'$(tput sgr0)"
         ;;
     esac
   fi
@@ -817,18 +2539,18 @@ function geterrors() {
 ################################################################################
 # Gets URL for review/bug/build/lint/test/coverage (where supported).
 #
-# REQUIREMENTS: project env vars are properly set (via 'project <name>')
+# REQUIREMENTS: project env vars are properly set (via 'projux attach <name>')
 #
 # Examples:
-#   geturl :review               # default code review url for project
-#   geturl :review xxx           # code review xxx
-#   geturl :bug                  # default bug for project
-#   geturl :bug xxx              # bug xxx
-#   geturl :build                # last build
-#   geturl :test                 # last test run
-#   geturl :coverage             # last coverage run
-#   VERBOSE=0 geturl :build      # verbose
-#   DRY_RUN=true geturl :build   # dry-run
+#   projux url :review               # default code review url for project
+#   projux url :review xxx           # code review xxx
+#   projux url :bug                  # default bug for project
+#   projux url :bug xxx              # bug xxx
+#   projux url :build                # last build
+#   projux url :test                 # last test run
+#   projux url :coverage             # last coverage run
+#   VERBOSE=0 projux url :build      # verbose
+#   DRY_RUN=true projux url :build   # dry-run
 #
 # This function relies on the existance of a function pointed to by the
 # PROJECT_GETURL_FN environment variable (set in ~/.projects) or
@@ -838,7 +2560,7 @@ function geterrors() {
 #   type: :review, :bug, :build, :test, :coverage, etc
 #   id: ide for review/bug, etc
 ################################################################################
-function geturl() {
+function __projux_url() {
   local project_name="${PROJECT_NAME}"
   if [[ "${1}" == "-p" ]]; then
     shift
@@ -848,7 +2570,7 @@ function geturl() {
 
   if [[ "${project_name%%:*}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
     __projux_tmux_send \
-        "$(__projux_default_project_win ${project_name})" "geturl" $*
+        "$(__projux_default_project_win ${project_name})" "__projux_url" $*
     return $?
   fi
 
@@ -858,392 +2580,402 @@ function geturl() {
     eval "$cmd"
   else
     case "${1}" in
-      ":build"|":comile")
+      ":build")
         local file=${PROJECT_TARGET_DIR}/build/last_run
         if [[ -f "${file}" ]]; then
-          echo $(sed -n 's/^.*\(http[^ ]*\|file[^ ]*\)$/\1/p' ${file} | tail -1)
+          echo $(sed -n -e 's/^.*\(http[^ ]*\)$/\1/p' \
+                        -e 's/^.*\(file[^ ]*\)$/\1/p' ${file} | tail -1)
         fi
         ;;
       ":test")
         local file=${PROJECT_TARGET_DIR}/test/last_run
         if [[ -f "${file}" ]]; then
-          echo $(sed -n 's/^.*\(http[^ ]*\|file[^ ]*\)$/\1/p' ${file} | tail -1)
+          echo $(sed -n -e 's/^.*\(http[^ ]*\)$/\1/p' \
+                        -e 's/^.*\(file[^ ]*\)$/\1/p' ${file} | tail -1)
         fi
         ;;
       ":coverage")
         local file=${PROJECT_TARGET_DIR}/coverage/last_run
         if [[ -f "${file}" ]]; then
-          echo $(sed -n 's/^.*\(http[^ ]*\|file[^ ]*\)$/\1/p' ${file} | tail -1)
+          echo $(sed -n -e 's/^.*\(http[^ ]*\)$/\1/p' \
+                        -e 's/^.*\(file[^ ]*\)$/\1/p' ${file} | tail -1)
         fi
+        ;;
+      *)
+        echo "$(tput setaf 1)ERROR: unknown url type '${1}'$(tput sgr0)"
         ;;
     esac
   fi
 }
 
 ################################################################################
-# Open browser to bug page.
-################################################################################
-function openbug() { open $(geturl ":bug ${1}"); }
-
-################################################################################
-# Open browser to code review page.
-################################################################################
-function openreview() { open $(geturl ":review ${1}"); }
-
-################################################################################
-# Open browser to build status page.
-################################################################################
-function openbuild() { open $(geturl ":build"); }
-
-################################################################################
-# Open browser to test status page.
-################################################################################
-function opentest() { open $(geturl ":test"); }
-
-################################################################################
-# Open browser to test coverage page.
-################################################################################
-function opencoverage() { open $(geturl ":coverage"); }
-
-
-################################################################################
-# Environment Variable Management Commands
-################################################################################
-
-################################################################################
-# Gets default tests.
-#
-# REQUIREMENTS: project env vars are properly set (via 'project <name>')
-#
-# Echos PROJECT_TEST_TARGETS environment variable
-#
-# Example:
-#   gettest
-################################################################################
-function gettest() {
-  local project_name="${PROJECT_NAME}"
-  if [[ "${1}" == "-p" ]]; then
-    shift
-    project_name="${1}"
-    shift
-  fi
-
-  if [[ "${project_name%%:*}" != "${PROJECT_NAME}" ]]; then
-    echo "$(__projux_project_var ${project_name} PROJECT_TEST_TARGETS)"
-  else
-    echo "$PROJECT_TEST_TARGETS"
-  fi
-}
-
-################################################################################
-# Sets default tests.
-#
-# Replaces the PROJECT_TEST_TARGETS environment variable with the specified
-# tests
+# Open browser to page.
 #
 # Examples:
-#   settest foo_test ../common/bar_test
-#
-# Args:
-#   targets: Target tests.
+#   projux goto :review               # default code review url for project
+#   projux goto :review xxx           # code review xxx
+#   projux goto :bug                  # default bug for project
+#   projux goto :bug xxx              # bug xxx
+#   projux goto :build                # last build
+#   projux goto :test                 # last test run
+#   projux goto :coverage             # last coverage run
+#   VERBOSE=0 projux goto :build      # verbose
+#   DRY_RUN=true projux goto :build   # dry-run
 ################################################################################
-function settest() {
-  local project_name="${PROJECT_NAME}"
-  if [[ "${1}" == "-p" ]]; then
-    shift
-    project_name="${1}"
-    shift
-  fi
-
-  if [[ "${project_name%%:*}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
-    __projux_tmux_send \
-        "$(__projux_default_project_win ${project_name})" "settest" $*
-    return $?
-  fi
-
-  local targets=""
-  for target in $(\
-      BASE_DIR=${PROJECT_DIR} __projux_normalize_targets "$@"); do
-    # Strip pre-package path
-    local normalized_target=${target##${PROJECT_TEST_DIR}}
-    # Remove any extension
-    if [[ -n "${normalized_target##*.}" ]]; then
-      normalized_target=${normalized_target%.*}
-    fi
-    local targets="${targets} ${normalized_target}"
-  done
-
-  export PROJECT_TEST_TARGETS="${targets}"
+function __projux_goto() {
+  case "${1}" in
+    ":bug"|":review"|":build"|":test"|":coverage")
+      open $(__projux_url $*)
+      ;;
+    *)
+      echo "$(tput setaf 1)ERROR: unknown url type '${1}'$(tput sgr0)"
+      ;;
+  esac
 }
 
 ################################################################################
-# Updates default tests.
-#
-# REQUIREMENTS: project env vars are properly set (via 'project <name>')
-#
-# Updates the PROJECT_TEST_TARGETS environment variable to add/remove
-# tests.
-#
-# Example:
-#   updatetest +foo_test -../common/bar_test
+# Runs cat command.
 #
 # Args:
-#   targets: Target tests.
+#   $1 (optional): {:lint|:build|:test|:coverage}
 ################################################################################
-function updatetest() {
-  local project_name="${PROJECT_NAME}"
-  if [[ "${1}" == "-p" ]]; then
-    shift
-    project_name="${1}"
-    shift
-  fi
+function __projux_cat() {
+  case "${1}" in
+    ":lint")
+      cat "${PROJECT_TARGET_DIR}/lint/last_run"
+      ;;
+    ":build")
+      cat "${PROJECT_TARGET_DIR}/build/last_run"
+      ;;
+    ":test")
+      cat "${PROJECT_TARGET_DIR}/test/last_run"
+      ;;
+    ":coverage")
+      cat "${PROJECT_TARGET_DIR}/coverage/last_run"
+      ;;
+    *)
+      cat "${PROJECT_TARGET_DIR}/last_run"
+      ;;
+  esac
+}
 
-  if [[ "${project_name%%:*}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
-    __projux_tmux_send \
-        "$(__projux_default_project_win ${project_name})" "updatetest" $*
+################################################################################
+# Runs vi command.
+#
+# Args:
+#   $1 (optional): {:lint|:build|:test|:coverage}
+################################################################################
+function __projux_vi() {
+  case "${1}" in
+    ":lint")
+      vi "${PROJECT_TARGET_DIR}/lint/last_run"
+      ;;
+    ":build")
+      vi "${PROJECT_TARGET_DIR}/build/last_run"
+      ;;
+    ":test")
+      vi "${PROJECT_TARGET_DIR}/test/last_run"
+      ;;
+    ":coverage")
+      vi "${PROJECT_TARGET_DIR}/coverage/last_run"
+      ;;
+    *)
+      vi "${PROJECT_TARGET_DIR}/last_run"
+      ;;
+  esac
+}
+
+
+################################################################################
+# TMUX Helper Functions
+################################################################################
+
+################################################################################
+# Sends text to tmux window/pane (internal use).
+#
+# If PROXY_CMDS is true (default) then any calls made on non-dev machine will
+# be proxied to the dev machine.
+#
+# REQUIREMENTS: project env vars are properly set (via 'projux attach <name>')
+#
+# Example:
+#   __projux_tmux_send foo:bash ls
+#
+# Args:
+#   $1: Tmux window/pane name (e.g. session:win or session:win.pane)
+#   $*: Text
+################################################################################
+function __projux_tmux_send() {
+  if __projux_is_project_local; then
+    tmux set-buffer "${@:2}$(printf \\r)"
+    tmux paste-buffer -d -t "${1}" &> /dev/null
+  else
+    __projux_ssh_send "__projux_tmux_send $*"
+  fi
+  return $?
+}
+
+################################################################################
+# Sends cmd using ssh to project's host (internal use).
+#
+# If PROXY_CMDS is true (default) then any calls made on non-project host will
+# be proxied to the project host machine.
+#
+# Example:
+#   __projux_ssh_send ls
+#
+# Args:
+#   $*: Command
+################################################################################
+function __projux_ssh_send() {
+  if [[ ${PROXY_CMDS-false} -gt 0 ]]; then
+    echo "$(tput setaf 1)ERROR: Not running on project host$(tput sgr0)"
+    return 1
+  else
+    echo "$(tput setaf 3)WARNING: Not running on project host$(tput sgr0)"
+    ssh -q -Y ${PROJECT_HOST-${DEFAULT_PROJECT_HOST}} "$*" 2> /dev/null
     return $?
   fi
+}
 
-  # Build list of added/removed items
-  local added=""
-  local removed=""
-  for arg in $*; do
-    if [[ "${arg}" == +* ]]; then
-      arg=${arg:1}
-      added="${add} ${arg}"
-    elif [[ "${arg}" == -* ]]; then
-      arg=${arg:1}
-      removed="${remove} ${arg}"
+
+################################################################################
+# Key/Value Helper Functions
+################################################################################
+
+################################################################################
+# Returns expression that can be evaluated to create a key::value list array.
+#
+# This is needed because values may have spaces in them. For example:
+#
+#   # Equivalent to: local kv_list=("foo:foo -test:it" "bar::bar -f")
+#   eval $(__projux_key_value_list "kv_list" "foo::foo -test:it bar::bar -f")
+#
+# Args:
+#   $1: Var name
+#   $*: Map (e.g. <key>::<value> <key>::<value> ...)
+#
+# Returns:
+#   ""<key>::<value>" "<key>::<value>" ..."
+################################################################################
+function __projux_key_value_list() {
+  local var=${1}
+  shift
+  local arr=()
+  local cur=""
+  local entry
+  for entry in "$@"; do
+    entry=$(echo ${entry}) # trim whitespace
+    if [[ "${entry}" == *::* ]]; then
+      if [[ -n "${cur}" ]]; then arr+=("\"${cur}\""); fi
+      cur=${entry}
     else
-      echo "$(tput setaf 3)Missing -/+ for arg ${arg}$(tput sgr0)"
+      cur="${cur} ${entry}"
     fi
   done
+  if [[ -n "${cur}" ]]; then arr+=("\"${cur}\""); fi
+  echo "local ${var}=(${arr[@]})"
+}
 
-  # Convert removed items to full targets
-  local removed_targets=""
-  for target in $(\
-      BASE_DIR=${PROJECT_DIR} __projux_normalize_targets ${removed}); do
-    # Strip pre-package path
-    local normalized_target=${target##${PROJECT_TEST_DIR}}
-    # Remove any extension
-    if [[ -n "${normalized_target##*.}" ]]; then
-      normalized_target=${normalized_target%.*}
-    fi
-    local removed_targets="${removed_targets} ${normalized_target}"
-  done
+################################################################################
+# Helper function to choose value from a list of key/values and flags.
+#
+# Example (cmds=test1::test1 -foo=a, -bar=b test2::test2 -bat=c)
+#   # test1 -foo=a,d,e ==bar=b
+#   __projux_key_value ${cmds} test1 -foo=+d,+e
+#
+# Args:
+#   $1: List of keys/values (<key>::<value> <key>::<value> ...).
+#   $2: Name of an embedded value within ${1}
+#   $*: Modifications to default flags
+#
+# Returns:
+#   Full form of embedded command after flag changes.
+################################################################################
+function __projux_key_value() {
+  local values="${1}"
+  shift
 
-  # Filter removed from current targets
-  local targets=""
-  pushd "${PROJECT_TEST_DIR}" &> /dev/null
-  for target in $(\
-        BASE_DIR=${PROJECT_DIR} \
-        __projux_normalize_targets ${PROJECT_TEST_TARGETS}); do
-    if [[ ! "${removed_targets}" == *"${target}"* ]]; then
-      if [[ -z "${targets}" ]]; then
-        local targets="${target}"
-      else
-        local targets="${targets} ${target}"
+  # The -* makes sure we don't confuse -flags for an embedded value
+  if [[ $# -gt 0 && "${1}" != -* ]]; then
+    local value="${1}"
+    shift
+    # Search for key (e.g. foo in "foo::foo -flags bar::bar -flags")
+    if [[ "${values}" =~ "${value}::" ]]; then
+      # Strip everything up to including foo::
+      values=${values#*${value}::}
+      if [[ "${values}" =~ "::" ]]; then
+        # Strip from first remaining :: to end
+        values=${values%%::*}
+        # Strip last word (e.g. bar from bar:: will be remaining)
+        values=${values% [^ ]*}
       fi
+    else
+      # value not found
+      echo ""
+      return
     fi
-  done
-  popd &> /dev/null
-
-  # Convert added items to full targets and add to current
-  for target in $(\
-      BASE_DIR=${PROJECT_DIR} __projux_normalize_targets ${added}); do
-    # Strip pre-package path
-    local normalized_target=${target##${PROJECT_TEST_DIR}}
-    # Remove any extension
-    if [[ -n "${normalized_target##*.}" ]]; then
-      normalized_target=${normalized_target%.*}
+  elif [[ "${values}" =~ "::" ]]; then
+    # Multiple entries, choose first (same as above algorithm, only no label)
+    values=${values#*::}
+    if [[ "${values}" =~ "::" ]]; then
+      values=${values%%::*}
+      values=${values% [^ ]*}
     fi
-    if [[ ! "${targets}" == *"${target}"* ]]; then
-      if [[ -z "${targets}" ]]; then
-        local targets="${normalized_target}"
-      else
-        local targets="${targets} ${normalized_target}"
-      fi
-    fi
-  done
-
-  export PROJECT_TEST_TARGETS="${targets}"
-}
-
-################################################################################
-# Clears default tests.
-#
-# Clears PROJECT_TEST_TARGETS environment variable
-#
-# Example:
-#   cleartests
-################################################################################
-function cleartest() {
-  local project_name="${PROJECT_NAME}"
-  if [[ "${1}" == "-p" ]]; then
-    shift
-    project_name="${1}"
-    shift
   fi
 
-  if [[ "${project_name%%:*}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
-    __projux_tmux_send \
-        "$(__projux_default_project_win ${project_name})" "cleartest" $*
-    return $?
-  fi
-
-  export PROJECT_TEST_TARGETS=""
-}
-
-################################################################################
-# Gets default run cmd.
-#
-# REQUIREMENTS: project env vars are properly set (via 'project <name>')
-#
-# Echos PROJECT_RUN_CMDS environment variable
-#
-# Examples:
-#   getrun                       # get all commands
-#   getrun foo                   # Gets cmd labeled with foo::
-#   getrun foo --my_flag=+bar    # Gets cmd labeld with foo:: and adds to flag
-#
-# Args:
-#   label: Optional label for run command to return.
-################################################################################
-function getrun() {
-  local project_name="${PROJECT_NAME}"
-  if [[ "${1}" == "-p" ]]; then
-    shift
-    project_name="${1}"
-    shift
-  fi
-
-  if [[ $# -eq 0 ]]; then
-    echo "$(__projux_project_var ${project_name%%:*} PROJECT_RUN_CMDS)"
-  else
-    local bin_dir=$(__projux_project_var ${project_name%%:*} PROJECT_BIN_DIR)
-    echo "${bin_dir}/$(__projux_get_run_cmd ${project_name%%:*} $*)"
-  fi
-}
-
-################################################################################
-# Sets run commands.
-#
-# REQUIREMENTS: project env vars are properly set (via 'project <name>')
-#
-# Replaces the PROJECT_RUN_CMDS environment variable with specified
-# value.
-#
-# Example:
-#   setrun foo::foo --someflag=some-value bar::bar --otherflag
-#
-# Args:
-#   cmd: Run commands.
-################################################################################
-function setrun() {
-  local project_name="${PROJECT_NAME}"
-  if [[ "${1}" == "-p" ]]; then
-    shift
-    project_name="${1}"
-    shift
-  fi
-
-  if [[ "${project_name%%:*}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
-    __projux_tmux_send \
-        "$(__projux_default_project_win ${project_name})" "setrun" $*
-    return $?
-  fi
-
-  export PROJECT_RUN_CMDS="$*"
-}
-
-################################################################################
-# Updates run commands.
-#
-# REQUIREMENTS: project env vars are properly set (via 'project <name>')
-#
-# Updates a single run command within the PROJECT_RUN_CMDS environment
-# variable.
-#
-# Example:
-#   updaterun foo::foo --someflag=+some-value,-other_value
-#
-# Args:
-#   cmd: Command.
-################################################################################
-function updaterun() {
-  local project_name="${PROJECT_NAME}"
-  if [[ "${1}" == "-p" ]]; then
-    shift
-    project_name="${1}"
-    shift
-  fi
-
-  if [[ "${project_name%%:*}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
-    __projux_tmux_send \
-        "$(__projux_default_project_win ${project_name})" "updaterun" $*
-    return $?
-  fi
-
-  local run_cmd=""
-  # Loop over current run commands looking for things to update
-  local skip=0
-  for token in $(echo ${PROJECT_RUN_CMDS}); do
-    # If start of a command
-    if [[ "${token}" == *::* ]]; then
-      local skip=0
-      local cmd_name=${token%%::*}
-      # If command passed as arg then update it
-      if [[ "$@" == "${cmd_name}"* ]]; then
-        local cmd=$(__projux_get_run_cmd ${project_name%%:*} "$@")
-        if [[ -z "${run_cmd}" ]]; then
-          local run_cmd="${cmd_name}::${cmd}"
-        else
-          local run_cmd="${run_cmd} ${cmd_name}::${cmd}"
+  # Check if additional args passed requiring flag addition/replacement
+  if [[ $# -gt 0 ]]; then
+    local flag=""
+    local old_value=""
+    local new_value=""
+    local flag_value=""
+    local flag_prefix=""  # prefix to add to flag (e.g. -, -no, etc)
+    local prefix=""       # prefix before flag
+    local suffix=""       # suffix after flag
+    local tmp=""
+    local OLDIFS=$IFS
+    IFS=$' '
+    for arg in $*; do
+      new_value=""
+      flag_prefix=""
+      # find flag name (if used)
+      if [[ "${arg}" =~ "=" ]]; then        # -foo=bar
+        flag=${arg%%=*}   # --foo or -foo
+        if [[ "${flag}" == --* ]]; then   # --foo
+          flag=${flag:2}  # foo
+          flag_prefix="--"
+        elif [[ "${flag}" == -* ]]; then  # -foo
+          flag=${flag:1}  # foo
+          flag_prefix="-"
+        else                              # just plain foo
+          flag_prefix=""
         fi
-        local skip=1
+        new_value=${arg#*=}      # bar
+      elif [[ "${arg}" == --no* ]]; then  # --nofoo
+        flag=${arg:4}     # foo
+        flag_prefix="--no"
+      elif [[ "${arg}" == -no* ]]; then   # -nofoo
+        flag=${arg:3}     # foo
+        flag_prefix="-no"
+      elif [[ "${arg}" == --* ]]; then    # --foo
+        flag=${arg:2}     # foo
+        flag_prefix="--"
+      elif [[ "${arg}" == -* ]]; then     # -foo
+        flag=${arg:1}     # foo
+        flag_prefix="-"
+      else                                # foo (e.g. not a flag)
+        flag=${arg}       # foo
+        flag_prefix=""
       fi
-    fi
-    if [[ $skip -eq 0 ]]; then
-      if [[ -z "${run_cmd}" ]]; then
-        local run_cmd="${token}"
+
+      # find flag in current value and splice around it
+      #    values   : 'mycmd --f1 --f2=a --f3=b'
+      #    flag     : 'f2'
+      #
+      #    prefix   : 'mycmd --f1 '
+      #    old_value : 'a'
+      #    suffix   : ' --f3=b'
+      old_value=""
+      if [[ "${values}" =~ "--no${flag}" ]]; then
+        suffix=${values#*--no${flag}}   # Strip up to including --noflag
+        prefix=${values:0:${#values}-${#suffix}-4-${#flag}}  # -4 for --no
+      elif [[ "${values}" =~ "-no${flag}" ]]; then
+        suffix=${values#*-no${flag}}    # Strip up to including -noflag
+        prefix=${values:0:${#values}-${#suffix}-3-${#flag}}  # -3 for -no
+      elif [[ "${values}" =~ "--${flag}=" ]]; then
+        suffix=${values#*--${flag}=}    # Strip up to including --flag=
+        prefix=${values:0:${#values}-${#suffix}-3-${#flag}}  # -3 for --,=
+        old_value=${suffix%% *}   # Strip up to first space
+        suffix=${suffix:${#old_value}}
+      elif [[ "${values}" =~ "-${flag}=" ]]; then
+        suffix=${values#*-${flag}=}     # Strip up to including -flag=
+        prefix=${values:0:${#values}-${#suffix}-2-${#flag}}  # -2 for -,=
+        old_value=${suffix%% *}   # Strip up to first space
+        suffix=${suffix:${#old_value}}
+      elif [[ "${values}" =~ "--${flag} " ]]; then
+        suffix=${values#*--${flag}}     # Strip up to including --flag
+        prefix=${values:0:${#values}-${#suffix}-2-${#flag}}  # -2 for --
+      elif [[ "${values}" =~ "-${flag} " ]]; then
+        suffix=${values#*-${flag}}      # Strip up to including -flag
+        prefix=${values:0:${#values}-${#suffix}-1-${#flag}}  # -1 for -
       else
-        local run_cmd="${run_cmd} ${token}"
+        prefix=${values}
+        # new flag or new arg, add space before prefix
+        flag_prefix=" ${flag_prefix}"
       fi
+
+      IFS=$','
+      local v
+      for v in $new_value; do
+        if [[ "$v" == +* ]]; then
+          v=${v:1}
+          # --foo=+bar (or -foo=+bar) means add bar to existing foo flag values
+          if [[ ! "${old_value}" =~ $v ]]; then
+            old_value="${old_value},${v}"
+            new_value=${old_value}
+          fi
+        elif [[ "$v" == -* ]]; then
+          v=${v:1}
+          # --foo=-bar (or -foo=-bar) means remove bar from existing flag values
+          if [[ "${old_value}" =~ ,$v ]]; then
+            tmp=${old_value#*,$v}
+            tmp=${old_value:0:${#old_value}-${#tmp}-1-${#v}}$tmp
+            old_value=$tmp
+            new_value=$tmp
+          elif [[ "${old_value}" =~ $v, ]]; then
+            tmp=${old_value#*$v,}
+            tmp=${old_value:0:${#old_value}-${#tmp}-1-${#v}}$tmp
+            old_value=$tmp
+            new_value=$tmp
+          elif [[ "${old_value}" == "${v}" ]]; then  # removed flag altogether
+            flag_prefix=""
+            flag=""
+            new_value=""
+          fi
+        else
+          # --foo=bar (or -foo=bar) means replace existing foo flag with bar
+          old_value=$new_value
+        fi
+      done
+      IFS=$' '
+
+      if [[ -n "${new_value}" ]]; then
+        values="${prefix}${flag_prefix}${flag}=${new_value}${suffix}"
+      else
+        values="${prefix}${flag_prefix}${flag}${new_value}${suffix}"
+      fi
+    done
+    IFS=$OLDIFS
+  fi
+  echo "${values}"
+}
+
+################################################################################
+# Extracts value for the a given file extension.
+#
+# Args:
+#   $1: Extension
+#   $2: <file_ext>:...:<file_ext>::<value> ...
+#
+# Returns:
+#   Value or empty string.
+################################################################################
+function __projux_value_for_ext() {
+  OLDIFS=$IFS
+  IFS=$' '
+  local entry
+  eval "$(__projux_key_value_list kv_list ${2})"
+  for entry in "${kv_list[@]}"; do
+    if [[ "${entry%%::*}:" =~ "${1}:" ]]; then
+      echo "${entry#*::}"
+      IFS=$OLDIFS
+      return 0
     fi
   done
-
-  export PROJECT_RUN_CMDS="${run_cmd}"
+  IFS=$OLDIFS
+  return 1
 }
-
-################################################################################
-# Clears run cmd.
-#
-# Clears PROJECT_RUN_CMDS environment variable.
-#
-# Example:
-#   clearrun
-################################################################################
-function clearrun() {
-  local project_name="${PROJECT_NAME}"
-  if [[ "${1}" == "-p" ]]; then
-    shift
-    project_name="${1}"
-    shift
-  fi
-
-  if [[ "${project_name%%:*}" != "${PROJECT_NAME}" || ! is_dev_local ]]; then
-    __projux_tmux_send \
-        "$(__projux_default_project_win ${project_name})" "clearrun" $*
-    return $?
-  fi
-
-  export PROJECT_RUN_CMDS=""
-}
-
-
-################################################################################
-# Internal Helper Functions
-################################################################################
 
 ################################################################################
 # Helper function to get run cmd.
@@ -1310,7 +3042,7 @@ function __projux_select_cmd() {
   local cmd=$(__projux_key_value "${cmds}" "$@")
 
   if [[ -z "${VERBOSE}" || ${VERBOSE} -ne 0 ]]; then
-    __projux_print_cmd "${heading}" "${cmd}"
+    __projux_print_cmd "${heading}" ${cmd}
   fi
 
   if [[ ${DRY_RUN-false} -eq 0 ]]; then
@@ -1346,7 +3078,7 @@ function __projux_select_cmd() {
 #   $DRY_RUN: True to only do dry run
 #
 # Args:
-#   $*: Target files and directories (... means recursively) or stdin.
+#   $*: Flags and target files and directories (... means recursively) or stdin.
 #
 # Returns:
 #   0 if success, 1 if failure.
@@ -1391,7 +3123,7 @@ function __projux_exec() {
     local cmd=$(BASE_DIR=${OUT_DIR} \
                 INCLUDE_FILTER="*.${FILE_TYPE}" \
                 __projux_make_cmd ${tmp})
-    if [[ $? -ne 0 || "${cmd}" == *"ERROR"* ]]; then
+    if [[ $? -ne 0 || "${cmd}" == *"ERROR: "* ]]; then
       echo "${cmd}"
       status=1
     fi
@@ -1423,8 +3155,21 @@ function __projux_exec() {
   local inc_filter="${PROJECT_INCLUDE_FILTER-${DEFAULT_PROJECT_INCLUDE_FILTER}}"
   local exc_filter="${PROJECT_EXCLUDE_FILTER-${DEFAULT_PROJECT_EXCLUDE_FILTER}}"
 
+  # Separate flags and targets
+  local flags=""
+  local targets=""
+  for x in "$@"; do
+    if [[ "${x}" == -* ]]; then
+      flags="${flags} ${x}"
+    else
+      targets="${targets} ${x}"
+    fi
+  done
+  flags=$(echo ${flags})  # trim spaces
+  targets=$(echo ${targets})  # trim spaces
+
   local targets=$(\
-      BASE_DIR="" GLOB_IGNORE=${exc_filter}  __projux_normalize_targets "$@")
+      BASE_DIR="" GLOB_IGNORE=${exc_filter}  __projux_normalize_targets "${targets}")
 
   if [[ -n "${BASE_DIR}" ]]; then
     local base_dir=${BASE_DIR}
@@ -1437,8 +3182,8 @@ function __projux_exec() {
   local cmd=$(BASE_DIR=${base_dir} \
               INCLUDE_FILTER=${inc_filter} \
               EXCLUDE_FILTER=${exc_filter} \
-              __projux_make_cmd "${targets}")
-  if [[ $? -ne 0 || "${cmd}" == *"ERROR"* ]]; then
+              __projux_make_cmd "${flags} ${targets}")
+  if [[ $? -ne 0 || "${cmd}" == *"ERROR: "* ]]; then
     echo "${cmd}"
     return 1;
   fi
@@ -1476,23 +3221,24 @@ function __projux_exec() {
 # based on file extensions.
 #
 # Commands are specified using a CSV of <ext>:...:<ext>=cmd;...cmd values.
-# The keywords '<targets>' or '<args>' within a cmd will be replaced by the
-# expanded targets or the args as passed.  All commands are run from the
-# $BASE_DIR and must be in subdirectories of $BASE_DIR.
+# The tags '<flags>' or '<targets>' within a cmd will be replaced by the
+# flags passed and the expanded targets respectively. To receive the input as
+# passed without target expansion, use the tag '<args>'. All commands are run
+# from the $BASE_DIR and must be in subdirectories of $BASE_DIR.
 #
 # Examples:
 #   # Recursively run clang-format on *.cc/*.h and gofmt/govet on *.go
 #   BASE_DIR=${PROJECT_DIR} \
 #   INCLUDE_FILTER=*.{cc,h}:*.go \
 #   EXEC_CMDS="\
-#       cc:h=clang-format <targets>, \
-#       go=gofmt -w <targets>;govet <targets>" \
+#       cc:h=clang-format <flags> <targets>, \
+#       go=gofmt -w <targets>;govet <flags> <targets>" \
 #   __projux_make_cmd "..."
 #
 #   # Run lint on make/*.cc/*.h in src dir
 #   BASE_DIR=${PROJECT_DIR} \
 #   INCLUDE_FILTER={make,*.cc,*.h} \
-#   EXEC_CMDS="make:cc:h=mylint <targets>" \
+#   EXEC_CMDS="make:cc:h=mylint <flags> <targets>" \
 #   __projux_make_cmd "src"
 #
 # Env Vars:
@@ -1504,7 +3250,7 @@ function __projux_exec() {
 #   $REMOVE_EXTENSIONS: 1 to remove file extensions (useful for tests).
 #
 # Args:
-#   $*: Target files and directories (... means recursively)
+#   $*: Flags and target files and directories (... means recursively)
 #
 # Returns:
 #   List of commands and associated targets separated by ';'. The returned value
@@ -1516,6 +3262,19 @@ function __projux_make_cmd() {
     echo "$(tput setaf 1)ERROR: Not in subdirectory of ${BASE_DIR}$(tput sgr0)"
     return 1
   fi
+
+  # Separate flags and targets
+  local flags=""
+  local targets=""
+  for x in $@; do
+    if [[ "${x}" == -* ]]; then
+      flags="${flags} ${x}"
+    else
+      targets="${targets} ${x}"
+    fi
+  done
+  flags=$(echo ${flags})  # trim spaces
+  targets=$(echo ${targets})  # trim spaces
 
   # disable globbing
   set -f
@@ -1538,8 +3297,9 @@ function __projux_make_cmd() {
     if [[ "${cmds}" == *"<args>"* ]]; then
       # convert args to args relative to base dir
       local arg
-      for arg in "$@"; do
+      for arg in "$targets"; do
         arg="${arg##${BASE_DIR}/}"
+        arg="${arg##${BASE_DIR}}"
         # Strip extensions if requested
         if [[ ${REMOVE_EXTENSIONS} -eq 1 && "${arg}" != *"..." ]]; then
           arg="${arg%.*}"
@@ -1547,9 +3307,11 @@ function __projux_make_cmd() {
         args+=("${arg}")
       done
     fi
+
     IFS=$';'
     for cmd in ${cmds}; do
-      cmd=${cmd/<args>/"${args[@]}"}
+      cmd=${cmd/<flags>/"${flags}"}
+      cmd=${cmd/<args>/"${flags} ${args[@]}"}
       if [[ "${cmd}" == *"<targets>"* ]]; then
         updated_cmds="${updated_cmds};${cmd}"
       else
@@ -1597,7 +3359,7 @@ function __projux_make_cmd() {
           include_targets+=(\
               $(GLOB_PATTERN=${glob_pattern} \
                 GLOB_IGNORE=${EXCLUDE_FILTER} \
-                __projux_expand_targets "$@"))
+                __projux_expand_targets "${targets}"))
           IFS=$':'
           found=1
           break
@@ -1614,7 +3376,7 @@ function __projux_make_cmd() {
           # $BASE_DIR implicilty passed
           # Example output: src/foo/bar.c src/bar/bar.c
           exclude_targets+=(\
-              $(GLOB_PATTERN=${filter} __projux_expand_targets "$@"))
+              $(GLOB_PATTERN=${filter} __projux_expand_targets "${targets}"))
           IFS=$':'
           break
         fi
@@ -1842,8 +3604,10 @@ function __projux_common_path() {
   if [[ $# -lt 2 ]]; then
     if [[ -d "${1}" ]]; then
       local common_path=${1}
-    else
+    elif [[ -f "${1}" ]]; then
       local common_path=${1%/*}
+    else
+      local common_path=${PWD}
     fi
   else
     local common_path=$(\
@@ -2035,9 +3799,8 @@ function __projux_create_target_subdir() {
 ################################################################################
 # Prints command.
 #
-# HEADING -------------------------------
-# PWD: .....
-# CMD: .....
+# -- HEADING (DIR) ----------------------
+# cmd .....
 # ---------------------------------------
 #
 # Args:
@@ -2048,16 +3811,19 @@ function __projux_create_target_subdir() {
 function __projux_print_cmd() {
 local sep="\
 --------------------------------------------------------------------------------"
-  echo "$(tput setaf 2)${1} ${sep:0:${#sep}-${#1}-1}"
-  shift
   local pwd=${PWD/${HOME}/"~"}
-  echo "PWD: ${pwd}"
+  local heading="-- ${1}"
+  echo  "${pwd}"
+  echo "$(tput setaf 2)${heading} ${sep:0:${#sep}-${#heading}-1}"
+  echo ""
+  shift
   local padding="                                        "
-  local next="CMD:"
+  local next=""
   # trim spaces in command
   for value in ${1}; do
     next="${next} ${value}"
   done
+  next=$(echo ${next})
   shift
   local state=2 # 1 next value is command, 2 first value after command, 0 normal
   local t
@@ -2073,11 +3839,17 @@ local sep="\
       state=3
     elif [[ $state -eq 1 ]]; then
       echo "${next}"
-      next="     ${target}"
+      next="${target}"
       state=2
     elif [[ ! "${target}" == */* ]]; then
       # target part of command, just add to current and then get next arg
-      next="${next} ${target}"
+      if [[ $((${#next} + ${#target})) -lt 80 ]]; then
+        # Args fit on same line
+        next="${next} ${target}"
+      else
+        echo "${next} \\"
+        next="    ${target}"
+      fi
       continue
     elif [[ $state -eq 3 ]]; then
       next="${next} ${target}"
@@ -2090,7 +3862,7 @@ local sep="\
       else
         state=0
       fi
-      if [[ $((${#next} + ${#target})) -lt 76 ]]; then
+      if [[ $((${#next} + ${#target})) -lt 80 ]]; then
         # Put first target on same line as command
         local offset=${#next}
         local next="${next} ${target} \\"
@@ -2113,30 +3885,4 @@ local sep="\
     echo "${next}"
   fi
   echo "${sep}$(tput sgr0)"
-}
-
-
-################################################################################
-# Help
-################################################################################
-
-function __projux_print_cmds() {
-  echo "format [-p <proj...>] [<target>]      - formats target"
-  echo "lint [-p <proj...>] [<target>]        - lints target"
-  echo "build [-p <proj...>] [<targ>|clean]   - build target"
-  echo "test [-p <proj...>] [<target>]        - runs test target"
-  echo "coverage [-p <proj...>] [<target>]    - runs code coverage"
-  echo "run [-p <proj...>] [<prog>]           - runs program"
-  echo "clean [-p <proj...>]                  - clears project temp files"
-  echo "package [-p <proj...>]                - packages project output"
-  echo "deploy [-p <proj...>]                 - deploys project output"
-  echo "gendocs [-p <proj...>]                - generates project docs"
-  echo "search [-p <proj...>] <tags>          - searches code for tags"
-  echo "sanity [-p <proj...>]                 - runs project sanity check"
-  echo "share [-p <proj...>] <prog>           - copy program to ~/Public, etc"
-  echo "geterrors [-p <proj...>] [lint|...]   - gets errors of prev lint, ..."
-  echo "geturl [-p <proj...>] [review|bug|..] - gets url for review, bug, ..."
-  echo "open{build|test|coverage|bug|review}  - open url for build/test..."
-  echo "get/set/update/cleartest [+-]<target> - modify PROJECT_TEST_TARGETS"
-  echo "get/set/update/clearrun [+-]<flags>   - modify PROJECT_RUN_CMDS"
 }
