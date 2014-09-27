@@ -706,6 +706,7 @@ projux commands by prefixing each subcommand with ':'. For example:
     ...
 
 In addition short cuts are provided for the most commonly used subcommands:
+
     :a                            # projux attach
     :b                            # projux build
     :d                            # projux deploy
