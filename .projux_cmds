@@ -1355,8 +1355,10 @@ function __projux_sftp() {
 function __projux_attach() {
   local project_name="${1}"
   local instance_suffix=""
+  local offset=1
   if [[ -n "${2}" && ${2} -ne 1 ]]; then
     instance_suffix="_${2}"
+    offset=${2}
   fi
   local session="${project_name}${instance_suffix}"
 
@@ -1384,9 +1386,16 @@ function __projux_attach() {
     local project_wins=$(\
         __projux_project_var "${project_name}" "PROJECT_WINDOWS")
     eval "$(__projux_key_value_list kv_list ${project_wins})"
+    local counter=1
+    local default_win=""
     for win in "${kv_list[@]}"; do
       cmd=${win##*::}
       win=${win%::*}
+      if [[ "${counter}" == "${offset}" ]]; then
+        default_win=$win
+      fi
+      let counter=counter+1
+
       if [[ -z "${new_session}" ]]; then
         # Pass empty TMUX env var to keep tmux happy when creating
         # from within tmux
@@ -1409,12 +1418,13 @@ function __projux_attach() {
       #
       # NOTE: To handle case where the project session may not have been created
       # yet (e.g. 'projux attach foo 2' was used before 'projux attach foo')
-      # we will always try to create a new project session  before attempting to
+      # we will always try to create a new project session before attempting to
       # create a session group. If the project session already exists we just
       # throw out the error and move on to session group creation.
       local attach_session="${attach_session} || \
           { { ${new_session}; }; \
-          TMUX= tmux new -t ${project_name} -s ${session} &> /dev/null; }"
+          TMUX= tmux new -t ${project_name} -s ${session} \\; \
+                select-window -tf ${default_win} &> /dev/null; }"
     fi
 
     # Commands to attach/switch to new session

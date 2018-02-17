@@ -354,9 +354,7 @@ if [[ -z "${DEFAULT_PROJECT_SYNC_DESTS}" ]]; then
   DEFAULT_PROJECT_SYNC_DESTS="~"
 fi
 
-PROJUX_SCRIPT_DIR=$(\
-  pushd $(dirname ${BASH_SOURCE[0]}) 2&> /dev/null && \
-  pwd; popd 2&> /dev/null)
+PROJUX_SCRIPT_DIR="$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)"
 
 ################################################################################
 # Commands
