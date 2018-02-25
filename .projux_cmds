@@ -3199,7 +3199,7 @@ function __projux_exec() {
   fi
 
   # Change to base dir
-  pushd "${base_dir}" $> /dev/null
+  pushd "${base_dir}" &> /dev/null
   if [[ $? -gt 0 ]]; then
     echo "$(tput setaf 1)ERROR: Invalid directory ${base_dir}$(tput sgr0)"
     return 1
