@@ -426,8 +426,9 @@ function __projux_examples() {
     "format")
       echo "Format:"
       echo "-------------------------------------------------------------------"
-      echo "projux format                        # format recursively"
-      echo "projux format ...                    # as above"
+      echo "projux format                        # format current dir"
+      echo "projux format .                      # as above"
+      echo "projux format ...                    # format recursively"
       echo "projux format foo.cc                 # format specific file"
       echo "projux format :project               # format project src/test dirs"
       echo "cat foo | FILE_TYPE=cc projux format # format stdin"
@@ -436,8 +437,9 @@ function __projux_examples() {
     "lint")
       echo "Lint:"
       echo "-------------------------------------------------------------------"
-      echo "projux lint                          # lint recursively"
-      echo "projux lint ...                      # as above"
+      echo "projux lint                          # lint current dir"
+      echo "projux lint .                        # as above"
+      echo "projux lint ...                      # lint recursively"
       echo "projux lint foo.cc                   # lint specific file"
       echo "projux lint :project                 # lint project src/test dirs"
       echo "cat foo | FILE_TYPE=cc projux lint   # lint stdin"
@@ -446,8 +448,9 @@ function __projux_examples() {
     "build")
       echo "Build:"
       echo "-------------------------------------------------------------------"
-      echo "projux build                         # build recursively"
-      echo "projux build ...                     # as above"
+      echo "projux build                         # default build"
+      echo "projux build .                       # build current dir"
+      echo "projux build ...                     # build recursively"
       echo "projux build foo.scala               # build specific file"
       echo "projux build :project                # build project src/test dirs"
       echo "cat foo | FILE_TYPE=cc projux build  # build stdin"
@@ -458,7 +461,9 @@ function __projux_examples() {
       echo "-------------------------------------------------------------------"
       echo "projux test foo_class_test           # test foo_class_test"
       echo "projux test foo_class_test.cc        # as above (auto removes .cc)"
-      echo "projux test                          # test recursively"
+      echo "projux test                          # default test"
+      echo "projux test .                        # test current dir"
+      echo "projux test ...                      # test recursively"
       echo "projux test ...                      # as above"
       echo "projux test :project                 # files in project test dir"
       ;;
@@ -468,8 +473,9 @@ function __projux_examples() {
       echo "-------------------------------------------------------------------"
       echo "projux coverage foo_class_test       # coverage of foo_class_test"
       echo "projux coverage foo_class_test.cc    # as above (auto removes .cc)"
-      echo "projux coverage                      # coverage recursively"
-      echo "projux coverage ...                  # as above"
+      echo "projux coverage                      # coverage of current dir"
+      echo "projux coverage .                    # as above"
+      echo "projux coverage ...                  # coverage recursively"
       echo "projux coverage :project             # files in project test dir"
       ;;
 
@@ -579,8 +585,8 @@ function __projux_examples() {
       echo "-------------------------------------------------------------------"
       echo "projux format          # recursively format files"
       echo "projux lint            # recursively lint files"
-      echo "projux build           # recursively build files"
-      echo "projux test            # recursively test files"
+      echo "projux build           # default build"
+      echo "projux test            # default test"
       echo "projux coverage        # recursively run coverage on files"
       echo "projux run             # runs default project run command"
       echo "projux clean           # clears project temp (build, etc) files"
@@ -1661,8 +1667,9 @@ function __projux_pushd() {
 # the PROJECT_SRC_DIR and PROJECT_TEST_DIR directories as targets.
 #
 # Examples:
-#   projux format                         # format recursively from current dir
-#   projux format ...                     # as above
+#   projux format                         # format urrent dir
+#   projux format .                       # as above
+#   projux format ...                     # format recursively from current dir
 #   projux format foo.cc                  # format specific file
 #   projux format :project                # format project src/test targets
 #   cat foo | FILE_TYPE=cc projux format  # format stdin
@@ -1693,7 +1700,7 @@ function __projux_format() {
     eval "$cmd"
   else
     if [[ $# -eq 0 ]]; then
-      local args="..."
+      local args="."
     elif [[ "${1}" == ":project" ]]; then
       # Use src/test directories as targets
       local args=$(__projux_expand_pkgs 3)
@@ -1736,8 +1743,9 @@ function __projux_format() {
 # the last_run output. By default ${PROJECT_TARGET_DIR}/lint is used.
 #
 # Examples:
-#   projux lint                           # recursively lint current dir
-#   projux lint ...                       # as above
+#   projux lint                           # lint current dir
+#   projux lint .                         # as above
+#   projux lint ...                       # recursively lint current dir
 #   projux lint foo.cc                    # lint specific file
 #   projux lint :project                  # lint project src/test targets
 #   cat foo | FILE_TYPE=cc projux lint    # lint stdin
@@ -1769,7 +1777,7 @@ function __projux_lint() {
     eval "$cmd"
   else
     if [[ $# -eq 0 ]]; then
-      local args="..."
+      local args="."
     elif [[ "${1}" == ":project" ]]; then
       # Use src/test directories as targets
       local args=$(__projux_expand_pkgs 3)
@@ -1812,8 +1820,9 @@ function __projux_lint() {
 # the last_run output. By default ${PROJECT_TARGET_DIR}/build is used.
 #
 # Examples:
+#   projux build                            # default build
+#   projux build .                          # build current dir
 #   projux build ...                        # build recursively from current dir
-#   projux build                            # as above
 #   projux build foo.scala                  # build specific file
 #   projux build :project                   # build project src/test targets
 #   cat foo | FILE_TYPE=scala projux build  # build stdin
@@ -1845,7 +1854,7 @@ function __projux_build() {
     eval "$cmd"
   else
     if [[ $# -eq 0 ]]; then
-      local args="..."
+      local args=""
     elif [[ "${1}" == ":project" ]]; then
       # Use src/test directories as targets
       local args=$(__projux_expand_pkgs 3)
@@ -1891,8 +1900,9 @@ function __projux_build() {
 # Examples:
 #   projux test foo_class_test        # test foo_class_test
 #   projux test foo_class_test.cc     # test foo_class_test (auto removes .cc)
-#   projux test                       # all test targets recursively
-#   projux test ...                   # as above
+#   projux test                       # default test
+#   projux test .                     # all test targets in current dir
+#   projux test ...                   # all test targets recursively
 #   projux test :project              # test matching targets in project test dir
 #   projux test -p xxx foo_test       # test foo_test in project xxx
 #   OUT=/tmp/test/out projux test     # redirect output to /tmp/test/out
@@ -1922,7 +1932,7 @@ function __projux_test() {
     eval "$cmd"
   else
     if [[ $# -eq 0 ]]; then
-      local args="..."
+      local args=""
     elif [[ "${1}" == ":project" ]]; then
       # Use test directories as targets
       local args=$(__projux_expand_pkgs 2)
@@ -1978,8 +1988,9 @@ function __projux_test() {
 #
 # Examples:
 #   projux coverage foo_class_test        # coverage of foo_class_test
-#   projux coverage                       # coverage of all test targets
-#   projux coverage ...                   # as above
+#   projux coverage                       # coverage of current dir
+#   projux coverage .                     # as above
+#   projux coverage ...                   # recursive coverage from current dir
 #   projux coverage :project              # coverage of targets in test dir
 #   projux coverage -p xxx foo_test       # coverage foo_test in project xxx
 #   OUT=/tmp/cov/out projux coverage      # redirect output to /tmp/cov/out
@@ -2009,7 +2020,7 @@ function __projux_coverage() {
     eval "$cmd"
   else
     if [[ $# -eq 0 ]]; then
-      local args="..."
+      local args="."
     elif [[ "${1}" == ":project" ]]; then
       # Use test directories as targets
       local args=$(__projux_expand_pkgs 2)
@@ -2102,7 +2113,8 @@ function __projux_run() {
   fi
 
   if [[ -z "${VERBOSE}" || ${VERBOSE} -ne 0 ]]; then
-    __projux_print_cmd "RUNNING" ${cmd}
+    local start_dir=${PWD/${HOME}/"~"}
+    __projux_print_cmd "RUNNING" "${start_dir}" ${cmd}
   fi
 
   if [[ ${DRY_RUN-false} -eq 0 ]]; then
@@ -2152,7 +2164,8 @@ function __projux_clean() {
   fi
 
   if [[ -z "${VERBOSE}" || ${VERBOSE} -ne 0 ]]; then
-    __projux_print_cmd "CLEANING" ${cmd}
+    local start_dir=${PWD/${HOME}/"~"}
+    __projux_print_cmd "CLEANING" "${start_dir}" ${cmd}
   fi
 
   if ! ${DRY_RUN-false}; then
@@ -2369,7 +2382,8 @@ function __projux_share() {
   local cmd="cp -f ${bin_dir}/${prog} ${dst}/${prog}"
 
   if [[ -z "${VERBOSE}" || ${VERBOSE} -ne 0 ]]; then
-    __projux_print_cmd "SHARING" ${cmd}
+    local start_dir=${PWD/${HOME}/"~"}
+    __projux_print_cmd "SHARING" "${start_dir}" ${cmd}
   fi
 
   if [[ ${DRY_RUN-false} -eq 0 ]]; then
@@ -3052,7 +3066,8 @@ function __projux_select_cmd() {
   local cmd=$(__projux_key_value "${cmds}" "$@")
 
   if [[ -z "${VERBOSE}" || ${VERBOSE} -ne 0 ]]; then
-    __projux_print_cmd "${heading}" ${cmd}
+    local start_dir=${PWD/${HOME}/"~"}
+    __projux_print_cmd "${heading}" "${start_dir}" ${cmd}
   fi
 
   if [[ ${DRY_RUN-false} -eq 0 ]]; then
@@ -3199,6 +3214,7 @@ function __projux_exec() {
   fi
 
   # Change to base dir
+  local start_dir=${PWD/${HOME}/"~"}
   pushd "${base_dir}" &> /dev/null
   if [[ $? -gt 0 ]]; then
     echo "$(tput setaf 1)ERROR: Invalid directory ${base_dir}$(tput sgr0)"
@@ -3207,7 +3223,7 @@ function __projux_exec() {
 
   if [[ -z "${VERBOSE}" || ${VERBOSE} -ne 0 ]]; then
     set -f # disable globbing before printing
-    __projux_print_cmd "${HEADING}" ${cmd}
+    __projux_print_cmd "${HEADING}" "${start_dir}" ${cmd}
     set +f # re-enable
   fi
 
@@ -3823,10 +3839,20 @@ local sep="\
 --------------------------------------------------------------------------------"
   local pwd=${PWD/${HOME}/"~"}
   local heading="-- ${1}"
+  shift
+  local start_dir="${1}"
+  shift
+  if [[ ${HEADING-false} -eq 0 ]]; then
+    if [[ "${start_dir}" == "${pwd}" ]]; then
+      echo "$(tput setaf 2)$@$(tput sgr0)"
+    else
+      echo "$(tput setaf 2)pushd ${pwd}; $@; popd$(tput sgr0)"
+    fi
+    return 0
+  fi
   echo  "${pwd}"
   echo "$(tput setaf 2)${heading} ${sep:0:${#sep}-${#heading}-1}"
   echo ""
-  shift
   local padding="                                        "
   local next=""
   # trim spaces in command

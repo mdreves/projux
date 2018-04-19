@@ -101,7 +101,7 @@ development languages.  Here is an example of the settings we might add to
         # Format implementations for C++ and Go files
         export DEFAULT_PROJECT_FORMAT_CMDS="\
           c:cc:cpp:h::clang-format -i <flags> <targets> \
-          go::gofmt -tabs=false -tabwidth=2 -w <flags> <targets>"
+          go::goimports -w <flags> <targets>"
 
         # Lint implementation for Go files (using both govet and golint)
         export DEFAULT_PROJECT_LINT_CMDS="\
@@ -110,8 +110,8 @@ development languages.  Here is an example of the settings we might add to
         # Build implementation for Scala, C++, and Go files
         export DEFAULT_PROJECT_BUILD_CMDS="\
           scala::scalac <flags> <targets> \
-          cc::clang++ -std=c++11 -stdlib=libc++ -W <flags> <targets> \
-          go::go <flags> <targets>"
+          cc::bazel build <args> \
+          go::bazel build <args>"
 
 We could also add support for test, coverage, clean, package, etc, but we
 will keep the example simple for now.
@@ -142,11 +142,12 @@ with the same project. These variables/alaises are set whenever the
         PROJECT_NAME=bar
         PROJECT_INCLUDE_FILTER=*.{cc,h}:*.go
         PROJECT_DIR=${HOME}/Workspace/${PROJECT_NAME}
-        PROJECT_SRC_DIR=${PROJECT_DIR}/src
+        PROJECT_SRC_DIR=${PROJECT_DIR}
         PROJECT_TEST_DIR=${PROJECT_SRC_DIR}
         PROJECT_TEST_SUFFIXES=cc:go::_test
-        PROJECT_TARGET_DIR=${PROJECT_DIR}/target
-        PROJECT_BIN_DIR=${PROJECT_TARGET_DIR}/bin
+        PROJECT_TARGET_DIR=${PROJECT_DIR}/bazel-out
+        PROJECT_BIN_DIR=${PROJECT_TARGET_DIR}/bazel-bin/${PROJECT_NAME}
+        PROJECT_GEN_DIR=${PROJECT_DIR}/bazel-genfiles
         PROJECT_PKGS="xxx/bar"
         PROJECT_RUN_CMDS="bar -echo_flag="hello"
 
@@ -250,6 +251,7 @@ sub-directores recursively. For example, `build a/...` means build the
 `a/` directory and all its sub-directories.
 
 ## Common Flags
+
 Many commands accept a `-p <project>[:<win>]` flag to specify the project and
 optional win to run the command against. If used, this must come before other
 cmd args. When used the current project will not be changed, instead the command
@@ -260,6 +262,7 @@ project.
 # Subcommands
 
 ## Project Settings Subcommands
+
     $ projux
 
       Show current project.
@@ -322,6 +325,7 @@ project.
 
 
 ## Remote Project Management Subcommands
+
     $ projux sync [<project>]
 
       Sync local files with remote project host based on $PROJECT_SYNC_LIST and
@@ -352,6 +356,7 @@ project.
 
 
 ## Project Session Management Subcommands
+
     $ projux sessions
 
       Show all attached project sessions.
@@ -434,6 +439,7 @@ project.
 
 
 ## Project File and Directory Management Subcommands
+
     $ projux cd {:bin|:gen [#]|:project|:src [#]|:test [#]}
 
       Change to project related directories.
@@ -460,6 +466,7 @@ project.
 
 
 ## Project Tools Subcommands
+
     $ projux format [-p <project>] <targets>
 
       Runs project specific format based on $PROJECT_FORMAT_CMDS.
@@ -636,6 +643,7 @@ project.
 
 
 ## Project Output Subcommands
+
     $ projux errors {:build|:lint|:test|:coverage|<file>}
 
       Returns VIM quickfix friendly errors for last build/lint/test/coverage.
@@ -749,11 +757,11 @@ and scala in a 'repl' window:
 In this case the <key> is a colon separated list of file extensions and the
 <value> is the command(s) to use on files of those types. For example, for
 the PROJECT_FORMAT_CMDS we could use the following to run clang-format on
-files of type *.{cc,h} and gofmt on files of type *.go, use:
+files of type *.{cc,h} and goimports on files of type *.go, use:
 
         PROJECT_FORMAT_CMDS="\
             cc:h::clang-format -i <flags> <targets> \
-            go::gofmt -tabs=false -tabwidth=2 -w <flags> <targets>"
+            go::goimports -w <args>"
 
 In this case the literal string <flags> and <targets> will be replaced by the
 flags and expanded targets per file type. Any command line argument that starts
@@ -801,6 +809,7 @@ An environment variable `XXX` can have a default called `DEFAULT_XXX`. The
 `~/.bashrc`.
 
 ## General Project Settings
+
     PROJECT_NAME (required)
        Project name.
 
@@ -822,7 +831,7 @@ An environment variable `XXX` can have a default called `DEFAULT_XXX`. The
       Test directory for project (e.g. $PROJECT_DIR/test).
 
     PROJECT_TARGET_DIR (required)
-      Directory for build/lint output (e.g. $PROJECT_DIR/target)
+      Directory for build/lint output (e.g. $PROJECT_DIR/bazel-out)
 
     PROJECT_BIN_DIR (required)
       Directory containing executable program(s) (e.g.
@@ -830,7 +839,7 @@ An environment variable `XXX` can have a default called `DEFAULT_XXX`. The
       directory.
 
     PROJECT_GEN_DIR (required if cdgen used)
-      Directory generated code output to (e.g. $PROJECT_TARGET_DIR/gen).
+      Directory generated code output to (e.g. $PROJECT_DIR/bazel-genfiles).
 
     PROJECT_PKGS (required)
       List of main packages used by project (e.g. "com/example1 com/example2").
@@ -897,7 +906,7 @@ An environment variable `XXX` can have a default called `DEFAULT_XXX`. The
       The literal strings <flags> and <targets> (or <args>) can be used as
       placeholders for the flags and targets passed to projux format.
       (e.g. "cc:h::clang-format -i <flags> <targets>
-      go::gofmt -w <flags> <targets>")
+      go::goimports <args>")
 
     PROJECT_LINT_CMDS / DEFAULT_PROJECT_LINT_CMDS
       Map of commands to run when linting project files. The map should
@@ -920,7 +929,8 @@ An environment variable `XXX` can have a default called `DEFAULT_XXX`. The
       have the form: <file_ext>:...<file_ext>::<cmd>;...;<cmd> ...
       The literal strings <flags> and <targets> (or <args>) can be used as
       placeholders for the flags and targets passed to projux format.
-      (e.g. "scala::sbt test <flags> <targets>")
+      (e.g. "scala::sbt test <flags> <targets>
+       go::bazel test <args>")
 
     PROJECT_COVERAGE_CMDS / DEFAULT_PROJECT_COVERAGE_CMDS
       Map of commands to show code coverage of project tests. The map should
@@ -943,6 +953,7 @@ An environment variable `XXX` can have a default called `DEFAULT_XXX`. The
       a small subset of test to run multiple times during development.
 
 ## Custom Function Implementations
+
     PROJECT_FORMAT_FN / DEFAULT_PROJECT_FORMAT_FN
       Name of custom 'format' function implementation.
 
@@ -991,6 +1002,7 @@ An environment variable `XXX` can have a default called `DEFAULT_XXX`. The
       Comma separated list of directories to sync files to on remote host.
 
 ## Misc
+
     PROJUX_ALIASES
       Set to true to add projux related aliases (:build, etc). Default is true.
 
@@ -1008,6 +1020,10 @@ An environment variable `XXX` can have a default called `DEFAULT_XXX`. The
       not on/off. Level 0 effectively means off which is different than most
       flags in bash where 0 is success). Many commands do not support verbose
       output yet, so don't expect much. Default is true.
+
+    HEADING
+      Whether to print a heading when VERBOSE is used. This is a true/false
+      settings (e.g. DRY_RUN=true).
 
     DRY_RUN
       The dry run flag will print the command that will execute, but not
@@ -1032,7 +1048,7 @@ passing labels and flags to select the bash command that is ultimately invoked.
 
 # License
 
-Copyright 2012 - 2014 Mike Dreves
+Copyright 2012 - 2018 Mike Dreves
 
 All rights reserved. This program and the accompanying materials
 are made available under the terms of the Eclipse Public License v1.0

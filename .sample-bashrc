@@ -30,18 +30,21 @@ if [ -f ~/.projux/.projuxrc ] ; then
   export DEFAULT_PROJECT_EXCLUDE_FILTER="*tmp/*:*backup/*"
   export DEFAULT_PROJECT_FORMAT_CMDS="\
       c:cc:cpp:h::clang-format -i <targets> \
-      go::gofmt -tabs=false -tabwidth=2 -w <targets>"
+      go::goimports -w <targets>"
   export DEFAULT_PROJECT_LINT_CMDS="\
       py::pylint <targets> \
       go::golint <targets>; govet <targets>"
   export DEFAULT_PROJECT_COMPILE_CMDS="\
+      go::bazel build <args> \
       scala::scalac <targets> \
       java::javac <targets> \
-      cc::clang++ -std=c++11 -stdlib=libc++ -W <targets> \
-      go::go <targets>"
+      cc::clang++ -std=c++11 -stdlib=libc++ -W <targets>"
   export DEFAULT_PROJECT_TEST_CMDS="\
+      go::bazel test <args> \
       scala::sbt test <targets>"
-  export DEFAULT_PROJECT_CLEAN_CMDS="sbt clean"
+  export DEFAULT_PROJECT_CLEAN_CMDS="\
+      go::bazel clean\
+      scala::sbt clean"
   export DEFAULT_PROJECT_PACKAGE_CMDS="sbt package"
   export DEFAULT_PROJECT_GENDOCS_CMDS="sbt doc"
   export DEFAULT_PROJECT_SHARE_DIR="~/Public"

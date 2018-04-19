@@ -309,9 +309,13 @@
 #     flags in bash where 0 is success). Many commands do not support verbose
 #     output yet, so don't expect much.
 #
+#   HEADING
+#     Whether to print a heading when VERBOSE is used. This is a true/false
+#     settings (e.g. DRY_RUN=true).
+#
 #   DRY_RUN
 #     The dry run flag will print the command that will execute, but not
-#     actualy execute it. This is a true/false settings (e.g. DRY_RUN=true)
+#     actualy execute it. This is a true/false settings (e.g. DRY_RUN=true).
 #
 # -----------------------------------------------------------------------------
 # Common local (per command) Variables/Flags:

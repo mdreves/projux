@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright 2012-2014 Mike Dreves
+# Copyright 2012-2018 Mike Dreves
 #
 # All rights reserved. This program and the accompanying materials
 # are made available under the terms of the Eclipse Public License v1.0
@@ -32,13 +32,13 @@
 # Basic settings:
 #   PROJECT_NAME=foo
 #   PROJECT_HOST=mybuild-machine                  # Project specific tmux host
-#   PROJECT_WINDOWS="vim::bash repl::scala"       # Project specific tmux wins
+#   PROJECT_WINDOWS="vim::zsh repl::scala"        # Project specific tmux wins
 #   PROJECT_DIR=${HOME}/Workspace/${PROJECT_NAME} # Root project dir
 #   PROJECT_SRC_DIR=${PROJECT_DIR}/src            # Where to find source
 #   PROJECT_TEST_DIR=${PROJECT_DIR}/test          # Where to find tests
-#   PROJECT_TARGET_DIR=${PROJECT_DIR}/target      # Where to find/put output
-#   PROJECT_BIN_DIR=${PROJECT_TARGET_DIR}/bin     # Where to find/put exec prog
-#   PROJECT_GEN_DIR=${PROJECT_TARGET_DIR}/gen     # Where to find/put gen source
+#   PROJECT_TARGET_DIR=${PROJECT_DIR}/bazel-out   # Where to find/put output
+#   PROJECT_BIN_DIR=${PROJECT_DIR}/bazel-bin/{$PROJECT_NAME} # Where to find exe
+#   PROJECT_GEN_DIR=${PROJECT_DIR}/bazel-genfiles # Where to find/put gen source
 #   PROJECT_PKGS="com/example1 com/example2"      # Dirs in src/test with files
 #   PROJECT_INCLUDE_FILTER=*.{cc,h}:*.scala:*java # Files in pkgs to include
 #   PROJECT_EXCLUDE_FILTER="*tmp/*:*backup/*"     # Files/dirs to exclude
@@ -114,6 +114,23 @@
 # example1
 PROJECT_NAME=example1
 PROJECT_HOST=mybuild-machine
+PROJECT_WINDOWS="vim::bash build::bash repl::python"
+PROJECT_INCLUDE_FILTER=*.py
+PROJECT_DIR=${HOME}/Workspace/${PROJECT_NAME}
+PROJECT_SRC_DIR=${PROJECT_DIR}
+PROJECT_TEST_DIR=${PROJECT_SRC_DIR}
+PROJECT_TEST_SUFFIXES=py::_test
+PROJECT_TARGET_DIR=${PROJECT_DIR}/bazel-out
+PROJECT_BIN_DIR=${PROJECT_DIR}/bazel-bin/${PROJECT_NAME}
+PROJECT_GEN_DIR=${PROJECT_DIR}/bazel-genfiles
+PROJECT_PKGS=example1
+PROJECT_DEFAULT_RUN_CMDS="python example1.py --my_flag=xxx"
+PROJECT_BUG=5678
+alias gitsync="cd ${PROJECT_DIR}; git pull"
+
+# example2
+PROJECT_NAME=example2
+PROJECT_HOST=mybuild-machine
 PROJECT_WINDOWS="vim::bash build::bash repl::scala"
 PROJECT_INCLUDE_FILTER=*.scala:*java
 PROJECT_DIR=${HOME}/Workspace/${PROJECT_NAME}
@@ -128,19 +145,3 @@ PROJECT_DEFAULT_RUN_CMDS="\
 PROJECT_BUG=1234
 alias start="startup_script"
 alias stop="stop_script"
-
-# example2
-PROJECT_NAME=example2
-PROJECT_HOST=mybuild-machine
-PROJECT_WINDOWS="vim::bash build::bash repl::python"
-PROJECT_INCLUDE_FILTER=*.py
-PROJECT_DIR=${HOME}/Workspace/${PROJECT_NAME}
-PROJECT_SRC_DIR=${PROJECT_DIR}/src
-PROJECT_TEST_DIR=${PROJECT_SRC_DIR}
-PROJECT_TEST_SUFFIXES=py::_test
-PROJECT_TARGET_DIR=${PROJECT_DIR}
-PROJECT_BIN_DIR=${PROJECT_DIR}
-PROJECT_PKGS=example2
-PROJECT_DEFAULT_RUN_CMDS="python example2.py --my_flag=xxx"
-PROJECT_BUG=5678
-alias gitsync="cd ${PROJECT_DIR}; git pull"
