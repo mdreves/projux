@@ -2105,7 +2105,7 @@ function __projux_run() {
     return 1
   fi
 
-  local cmd="${PROJECT_BIN_DIR}/${run_cmd}"
+  local cmd="${run_cmd}"
   if $shared; then
     local share_dir="\
         ${PROJECT_SHARE_DIR-${DEFAULT_PROJECT_SHARE_DIR}/${project_name%%:*}}"
