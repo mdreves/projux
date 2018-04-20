@@ -37,7 +37,7 @@
 #   PROJECT_SRC_DIR=${PROJECT_DIR}/src            # Where to find source
 #   PROJECT_TEST_DIR=${PROJECT_DIR}/test          # Where to find tests
 #   PROJECT_TARGET_DIR=${PROJECT_DIR}/bazel-out   # Where to find/put output
-#   PROJECT_BIN_DIR=${PROJECT_DIR}/bazel-bin/{$PROJECT_NAME} # Where to find exe
+#   PROJECT_BIN_DIR=${PROJECT_DIR}/bazel-bin      # Where to find/put exe
 #   PROJECT_GEN_DIR=${PROJECT_DIR}/bazel-genfiles # Where to find/put gen source
 #   PROJECT_PKGS="com/example1 com/example2"      # Dirs in src/test with files
 #   PROJECT_INCLUDE_FILTER=*.{cc,h}:*.scala:*java # Files in pkgs to include

@@ -1,5 +1,5 @@
 ###############################################################################
-# Copyright 2012-2014 Mike Dreves
+# Copyright 2012-2018 Mike Dreves
 #
 # All rights reserved. This program and the accompanying materials
 # are made available under the terms of the Eclipse Public License v1.0
@@ -1820,9 +1820,8 @@ function __projux_lint() {
 # the last_run output. By default ${PROJECT_TARGET_DIR}/build is used.
 #
 # Examples:
-#   projux build                            # default build
-#   projux build .                          # build current dir
-#   projux build ...                        # build recursively from current dir
+#   projux build                            # build recursively from current dir
+#   projux build ...                        # as above
 #   projux build foo.scala                  # build specific file
 #   projux build :project                   # build project src/test targets
 #   cat foo | FILE_TYPE=scala projux build  # build stdin
@@ -1854,7 +1853,7 @@ function __projux_build() {
     eval "$cmd"
   else
     if [[ $# -eq 0 ]]; then
-      local args=""
+      local args="..."
     elif [[ "${1}" == ":project" ]]; then
       # Use src/test directories as targets
       local args=$(__projux_expand_pkgs 3)
@@ -1900,9 +1899,8 @@ function __projux_build() {
 # Examples:
 #   projux test foo_class_test        # test foo_class_test
 #   projux test foo_class_test.cc     # test foo_class_test (auto removes .cc)
-#   projux test                       # default test
-#   projux test .                     # all test targets in current dir
-#   projux test ...                   # all test targets recursively
+#   projux test                       # all test targets recursively
+#   projux test ...                   # as above
 #   projux test :project              # test matching targets in project test dir
 #   projux test -p xxx foo_test       # test foo_test in project xxx
 #   OUT=/tmp/test/out projux test     # redirect output to /tmp/test/out
@@ -1932,7 +1930,7 @@ function __projux_test() {
     eval "$cmd"
   else
     if [[ $# -eq 0 ]]; then
-      local args=""
+      local args="..."
     elif [[ "${1}" == ":project" ]]; then
       # Use test directories as targets
       local args=$(__projux_expand_pkgs 2)
